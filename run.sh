@@ -7,4 +7,4 @@ cd build
 cmake ..
 make -j
 
-./MCOP
+./LFIXE
