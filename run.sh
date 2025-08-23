@@ -15,4 +15,4 @@ cd build
 cmake ..
 make -j
 
-./LFIXE "$@"
+./PortfolioRiskManager "$@"
