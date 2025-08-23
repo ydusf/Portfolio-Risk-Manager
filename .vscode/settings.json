@@ -42,6 +42,20 @@
         "typeinfo": "cpp",
         "unordered_map": "cpp",
         "variant": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "cstddef": "cpp",
+        "any": "cpp",
+        "condition_variable": "cpp",
+        "memory": "cpp",
+        "sstream": "cpp",
+        "algorithm": "cpp",
+        "map": "cpp",
+        "__tree": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "set": "cpp",
+        "span": "cpp",
+        "unordered_set": "cpp",
+        "cassert": "cpp"
     }
 }

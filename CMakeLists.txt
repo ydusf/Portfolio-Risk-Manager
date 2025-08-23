@@ -84,6 +84,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 endif()
 
+# Define project root so it can be used in C++ code
+target_compile_definitions(${PROJECT_NAME} PRIVATE 
+    PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
+)
+
 # Print configuration summary
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
