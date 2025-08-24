@@ -17,14 +17,14 @@ private:
 public:
     Portfolio(const std::vector<std::string>& tickers, const std::vector<double>& weights);
 
-    double GetWeight(const std::string& ticker);
-    const std::vector<std::string>& GetTickers();
-    const std::vector<double>& GetWeights();
-    const std::map<std::string, double>& GetAssets();
+    double GetWeight(const std::string& ticker) const;
+    const std::vector<std::string>& GetTickers() const;
+    const std::vector<double>& GetWeights() const;
+    const std::map<std::string, double>& GetAssets() const;
 
-    double GetVaR(double confidence = 0.95);
-    double GetStandardDeviation();
-    double GetMeanReturn(std::size_t segmentDays);
+    double GetVaR(double confidence = 0.95) const;
+    double GetStandardDeviation() const;
+    double GetMeanReturn(std::size_t segmentDays) const;
 
     ~Portfolio();
 

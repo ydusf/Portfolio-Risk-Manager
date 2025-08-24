@@ -24,7 +24,7 @@ Portfolio::Portfolio(const std::vector<std::string>& tickers, const std::vector<
 Portfolio::~Portfolio()
 {};
 
-double Portfolio::GetWeight(const std::string& ticker)
+double Portfolio::GetWeight(const std::string& ticker) const
 {
     auto itr = m_assets.find(ticker);
     if(itr != m_assets.end())
@@ -35,23 +35,23 @@ double Portfolio::GetWeight(const std::string& ticker)
     return 0.0;
 }
 
-const std::vector<std::string>& Portfolio::GetTickers()
+const std::vector<std::string>& Portfolio::GetTickers() const
 {
     return m_tickers;
 }
 
-const std::vector<double>& Portfolio::GetWeights()
+const std::vector<double>& Portfolio::GetWeights() const
 {
     return m_weights;
 }
 
 
-const std::map<std::string, double>& Portfolio::GetAssets()
+const std::map<std::string, double>& Portfolio::GetAssets() const
 {
     return m_assets;
 }
 
-double Portfolio::GetVaR(double confidence)
+double Portfolio::GetVaR(double confidence) const
 {
     if(m_dailyReturnSeries.empty())
         return 0.0;
@@ -66,7 +66,7 @@ double Portfolio::GetVaR(double confidence)
     return sorted[idx];
 }
 
-double Portfolio::GetStandardDeviation()
+double Portfolio::GetStandardDeviation() const
 {
     if (m_dailyReturnSeries.empty()) 
         return 0.0;
@@ -82,24 +82,38 @@ double Portfolio::GetStandardDeviation()
     return std::sqrt(sqDiffSum / m_dailyReturnSeries.size());
 }
 
-double Portfolio::GetMeanReturn(std::size_t segmentDays)
+double Portfolio::GetMeanReturn(std::size_t segmentDays) const
 {
-    std::vector<double> segments(std::ceil(m_dailyReturnSeries.size() / segmentDays), 0.0);
+    if (segmentDays == 0 || m_dailyReturnSeries.empty()) 
+        return 0.0;
 
-    double segRet = 0.0;
-    for(std::size_t i = 0; i < m_dailyReturnSeries.size(); ++i)
+    std::vector<double> segmentAverages;
+    double segSum = 0.0;
+    std::size_t currentSegSize = 0;
+
+    for (const double dailyReturn : m_dailyReturnSeries)
     {
-        segRet += m_dailyReturnSeries[i];
+        segSum += dailyReturn;
+        ++currentSegSize;
 
-        if((i+1) % segmentDays == 0)
+        if (currentSegSize == segmentDays)
         {
-            segments.push_back(segRet);
-            segRet = 0.0;
+            segmentAverages.push_back(segSum / segmentDays);
+            segSum = 0.0;
+            currentSegSize = 0;
         }
     }
 
-    const double sum = std::accumulate(segments.begin(), segments.end(), 0.0);
-    return sum / segmentDays;
+    if(currentSegSize != 0)
+    {
+        segmentAverages.push_back(segSum / currentSegSize);
+    }
+
+    if (segmentAverages.empty()) 
+        return 0.0;
+
+    const double total = std::accumulate(segmentAverages.begin(), segmentAverages.end(), 0.0);
+    return total / segmentAverages.size();
 }
 
 
