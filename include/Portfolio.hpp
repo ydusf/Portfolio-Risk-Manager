@@ -22,10 +22,12 @@ public:
     const std::vector<double>& GetWeights() const;
     const std::map<std::string, double>& GetAssets() const;
 
-    double GetVaR(double confidence = 0.95) const;
-    double GetStandardDeviation() const;
     double GetMeanReturnOfSegment(std::size_t segmentDays) const;
     double GetMeanDailyReturn() const;
+    double GetStandardDeviation() const;
+    double GetVaR(double confidence = 0.95) const;
+    double GetCVaR(double confidence = 0.95) const;
+
 
     ~Portfolio();
 

@@ -51,37 +51,6 @@ const std::map<std::string, double>& Portfolio::GetAssets() const
     return m_assets;
 }
 
-double Portfolio::GetVaR(double confidence) const
-{
-    if(m_dailyReturnSeries.empty())
-        return 0.0;
-
-    std::vector<double> sorted = m_dailyReturnSeries;
-    std::sort(sorted.begin(), sorted.end());
-
-    std::size_t idx = static_cast<std::size_t>(std::floor((1.0 - confidence) * sorted.size()));
-
-    idx = std::min(idx, sorted.size()-1);
-
-    return sorted[idx];
-}
-
-double Portfolio::GetStandardDeviation() const
-{
-    if (m_dailyReturnSeries.empty()) 
-        return 0.0;
-
-    const double mean = GetMeanDailyReturn();
-
-    double sqDiffSum = 0.0;
-    for (double value : m_dailyReturnSeries) 
-    {
-        sqDiffSum += std::pow(value - mean, 2);
-    }
-
-    return std::sqrt(sqDiffSum / m_dailyReturnSeries.size());
-}
-
 double Portfolio::GetMeanReturnOfSegment(std::size_t segmentDays) const
 {
     if (segmentDays == 0 || m_dailyReturnSeries.empty())
@@ -120,8 +89,61 @@ double Portfolio::GetMeanReturnOfSegment(std::size_t segmentDays) const
 
 double Portfolio::GetMeanDailyReturn() const
 {
-    return GetMeanReturnOfSegment(m_dailyReturnSeries.size());
+    return GetMeanReturnOfSegment(1);
 }
+
+double Portfolio::GetStandardDeviation() const
+{
+    if (m_dailyReturnSeries.empty()) 
+        return 0.0;
+
+    const double mean = GetMeanDailyReturn();
+
+    double sqDiffSum = 0.0;
+    for (double value : m_dailyReturnSeries) 
+    {
+        sqDiffSum += std::pow(value - mean, 2);
+    }
+
+    return std::sqrt(sqDiffSum / m_dailyReturnSeries.size());
+}
+
+double Portfolio::GetVaR(double confidence) const
+{
+    if(m_dailyReturnSeries.empty())
+        return 0.0;
+    
+    std::vector<double> sorted = m_dailyReturnSeries;
+    std::sort(sorted.begin(), sorted.end());
+    
+    size_t index = static_cast<size_t>((1.0 - confidence) * sorted.size());
+    return -sorted[index];
+}
+
+double Portfolio::GetCVaR(double confidence) const
+{
+    if(m_dailyReturnSeries.empty())
+        return 0.0;
+    
+    std::vector<double> sorted = m_dailyReturnSeries;
+    std::sort(sorted.begin(), sorted.end());
+    
+    size_t index = static_cast<size_t>((1.0 - confidence) * sorted.size());
+    double var_threshold = sorted[index];
+    
+    double sum = 0.0;
+    size_t count = 0;
+    for(double r : sorted) 
+    {
+        if(r <= var_threshold) 
+        {
+            sum += r;
+            ++count;
+        }
+    }
+    
+    return -sum / count;
+}   
 
 /* -------------------------- PRIVATE METHODS ------------------------------ */
 

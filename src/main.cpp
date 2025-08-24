@@ -60,8 +60,10 @@ int main(int argc, char* argv[])
     double mean10R = portfolio.GetMeanReturnOfSegment(10);
     double stddev = portfolio.GetStandardDeviation();
     double VaR = portfolio.GetVaR();
+    double CVaR = portfolio.GetCVaR();
 
     std::cout << "Mean 10 Day Return: " << mean10R * 100 << "%" << '\n';
     std::cout << "STD: " << stddev * 100 << "%" << '\n';
     std::cout << "Portfolio VaR: " << VaR * 100 << "%" << '\n';
+    std::cout << "Portfolio CVaR: " << CVaR * 100 << "%" << '\n';
 }
