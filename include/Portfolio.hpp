@@ -12,6 +12,8 @@ private:
     std::vector<double> m_weights;
     std::map<std::string, double> m_assets;
 
+    std::vector<double> m_dailyReturnSeries;
+
 public:
     Portfolio(const std::vector<std::string>& tickers, const std::vector<double>& weights);
 
@@ -22,6 +24,7 @@ public:
 
     double GetVaR(double confidence = 0.95);
     double GetStandardDeviation();
+    double GetMeanReturn(std::size_t segmentDays);
 
     ~Portfolio();
 

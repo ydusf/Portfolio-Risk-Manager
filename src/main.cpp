@@ -57,9 +57,11 @@ int main(int argc, char* argv[])
 
     Portfolio portfolio(tickers, weights);
 
-    double VaR = portfolio.GetVaR();
+    double mean10R = portfolio.GetMeanReturn(10);
     double stddev = portfolio.GetStandardDeviation();
+    double VaR = portfolio.GetVaR();
 
-    std::cout << "Portfolio VaR: " << VaR << '\n';
-    std::cout << "STD: " << stddev << '\n';
+    std::cout << "Mean 10 Day Return: " << mean10R * 100 << "%" << '\n';
+    std::cout << "STD: " << stddev * 100 << "%" << '\n';
+    std::cout << "Portfolio VaR: " << VaR * 100 << "%" << '\n';
 }

@@ -17,6 +17,8 @@ Portfolio::Portfolio(const std::vector<std::string>& tickers, const std::vector<
     {
         m_assets.insert({m_tickers[i], m_weights[i]});
     }
+
+    m_dailyReturnSeries = GetReturns();
 }
 
 Portfolio::~Portfolio()
@@ -51,11 +53,10 @@ const std::map<std::string, double>& Portfolio::GetAssets()
 
 double Portfolio::GetVaR(double confidence)
 {
-    std::vector<double> returns = GetReturns();
-    if(returns.empty())
+    if(m_dailyReturnSeries.empty())
         return 0.0;
 
-    std::vector<double> sorted = returns;
+    std::vector<double> sorted = m_dailyReturnSeries;
     std::sort(sorted.begin(), sorted.end());
 
     std::size_t idx = static_cast<std::size_t>(std::floor((1.0 - confidence) * sorted.size()));
@@ -67,20 +68,38 @@ double Portfolio::GetVaR(double confidence)
 
 double Portfolio::GetStandardDeviation()
 {
-    std::vector<double> returns = GetReturns();
-    if (returns.empty()) 
+    if (m_dailyReturnSeries.empty()) 
         return 0.0;
 
-    double sum = std::accumulate(returns.begin(), returns.end(), 0.0);
-    double mean = sum / returns.size();
+    const double mean = GetMeanReturn(m_dailyReturnSeries.size()); // mean daily return
 
     double sqDiffSum = 0.0;
-    for (double value : returns) 
+    for (double value : m_dailyReturnSeries) 
     {
         sqDiffSum += std::pow(value - mean, 2);
     }
 
-    return std::sqrt(sqDiffSum / returns.size());
+    return std::sqrt(sqDiffSum / m_dailyReturnSeries.size());
+}
+
+double Portfolio::GetMeanReturn(std::size_t segmentDays)
+{
+    std::vector<double> segments(std::ceil(m_dailyReturnSeries.size() / segmentDays), 0.0);
+
+    double segRet = 0.0;
+    for(std::size_t i = 0; i < m_dailyReturnSeries.size(); ++i)
+    {
+        segRet += m_dailyReturnSeries[i];
+
+        if((i+1) % segmentDays == 0)
+        {
+            segments.push_back(segRet);
+            segRet = 0.0;
+        }
+    }
+
+    const double sum = std::accumulate(segments.begin(), segments.end(), 0.0);
+    return sum / segmentDays;
 }
 
 
