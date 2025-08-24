@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 
     Portfolio portfolio(tickers, weights);
 
-    double mean10R = portfolio.GetMeanReturnOfSegment(50);
+    double mean10R = portfolio.GetMeanReturnOfSegment(10);
     double stddev = portfolio.GetStandardDeviation();
     double VaR = portfolio.GetVaR();
 

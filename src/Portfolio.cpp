@@ -84,37 +84,39 @@ double Portfolio::GetStandardDeviation() const
 
 double Portfolio::GetMeanReturnOfSegment(std::size_t segmentDays) const
 {
-    if (segmentDays == 0 || m_dailyReturnSeries.empty()) 
+    if (segmentDays == 0 || m_dailyReturnSeries.empty())
         return 0.0;
 
-    std::vector<double> segmentAverages;
-    double segSum = 0.0;
+    std::vector<double> segmentReturns;
+    double segmentProduct = 1.0;
     std::size_t currentSegSize = 0;
 
     for (const double dailyReturn : m_dailyReturnSeries)
     {
-        segSum += dailyReturn;
+        segmentProduct *= (1.0 + dailyReturn);
         ++currentSegSize;
 
         if (currentSegSize == segmentDays)
         {
-            segmentAverages.push_back(segSum / segmentDays);
-            segSum = 0.0;
+            segmentReturns.push_back(segmentProduct - 1.0);
+
+            segmentProduct = 1.0;
             currentSegSize = 0;
         }
     }
 
-    if(currentSegSize != 0)
+    if (currentSegSize != 0)
     {
-        segmentAverages.push_back(segSum / currentSegSize);
+        segmentReturns.push_back(segmentProduct - 1.0);
     }
 
-    if (segmentAverages.empty()) 
+    if (segmentReturns.empty())
         return 0.0;
 
-    const double total = std::accumulate(segmentAverages.begin(), segmentAverages.end(), 0.0);
-    return total / segmentAverages.size();
+    const double total = std::accumulate(segmentReturns.begin(), segmentReturns.end(), 0.0);
+    return total / static_cast<double>(segmentReturns.size());
 }
+
 
 double Portfolio::GetMeanDailyReturn() const
 {
