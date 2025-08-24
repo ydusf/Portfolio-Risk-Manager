@@ -24,7 +24,8 @@ public:
 
     double GetVaR(double confidence = 0.95) const;
     double GetStandardDeviation() const;
-    double GetMeanReturn(std::size_t segmentDays) const;
+    double GetMeanReturnOfSegment(std::size_t segmentDays) const;
+    double GetMeanDailyReturn() const;
 
     ~Portfolio();
 

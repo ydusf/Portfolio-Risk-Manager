@@ -71,7 +71,7 @@ double Portfolio::GetStandardDeviation() const
     if (m_dailyReturnSeries.empty()) 
         return 0.0;
 
-    const double mean = GetMeanReturn(m_dailyReturnSeries.size()); // mean daily return
+    const double mean = GetMeanDailyReturn();
 
     double sqDiffSum = 0.0;
     for (double value : m_dailyReturnSeries) 
@@ -82,7 +82,7 @@ double Portfolio::GetStandardDeviation() const
     return std::sqrt(sqDiffSum / m_dailyReturnSeries.size());
 }
 
-double Portfolio::GetMeanReturn(std::size_t segmentDays) const
+double Portfolio::GetMeanReturnOfSegment(std::size_t segmentDays) const
 {
     if (segmentDays == 0 || m_dailyReturnSeries.empty()) 
         return 0.0;
@@ -116,6 +116,10 @@ double Portfolio::GetMeanReturn(std::size_t segmentDays) const
     return total / segmentAverages.size();
 }
 
+double Portfolio::GetMeanDailyReturn() const
+{
+    return GetMeanReturnOfSegment(m_dailyReturnSeries.size());
+}
 
 /* -------------------------- PRIVATE METHODS ------------------------------ */
 
