@@ -145,6 +145,15 @@ double Portfolio::GetCVaR(double confidence) const
     return -sum / count;
 }   
 
+double Portfolio::GetSharpeRatio() const
+{
+    double meanDailyReturn = GetMeanDailyReturn();
+    double volatility = GetStandardDeviation();
+
+    return (meanDailyReturn / volatility) * std::sqrt(252);
+};
+
+
 /* -------------------------- PRIVATE METHODS ------------------------------ */
 
 std::vector<double> Portfolio::GetReturns()

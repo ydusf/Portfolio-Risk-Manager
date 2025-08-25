@@ -27,7 +27,7 @@ public:
     double GetStandardDeviation() const;
     double GetVaR(double confidence = 0.95) const;
     double GetCVaR(double confidence = 0.95) const;
-
+    double GetSharpeRatio() const;
 
     ~Portfolio();
 

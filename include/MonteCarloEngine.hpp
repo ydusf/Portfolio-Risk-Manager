@@ -2,26 +2,9 @@
 
 #include <vector>
 #include <thread>
-#include <random>
 
 #include "Portfolio.hpp"
-
-struct NormalRNG
-{
-    std::mt19937 m_gen;
-    std::normal_distribution<double> m_dist;
-
-    NormalRNG() 
-        : NormalRNG(0.0, 1.0, std::random_device{}()) {}
-
-    NormalRNG(double mean, double stddev, unsigned seed = std::random_device{}())
-        : m_gen(seed), m_dist(mean, stddev) {}
-
-    double operator()()
-    {
-        return m_dist(m_gen);
-    }
-};
+#include "RandomGenerator.hpp"
 
 struct Returns
 {
@@ -34,6 +17,8 @@ class MonteCarloEngine
 private:
     const std::size_t m_NUM_THREADS = std::thread::hardware_concurrency();
     std::vector<NormalRNG> m_normal_rngs;
+
+    std::vector<std::thread> m_threadPool;
 
 public:
     MonteCarloEngine();
@@ -51,6 +36,21 @@ public:
         std::size_t numPaths = 1000000, 
         std::size_t numDays = 252
     );
+    Returns BuildPricePaths
+    (
+        const Returns& returns,
+        double initialPrice
+    );
 
 private:
+    void GenerateReturnsJob
+    ( 
+        std::vector<double>& returns,
+        const std::size_t threadIdx, 
+        const std::size_t pStartIdx, 
+        const std::size_t pEndIdx, 
+        const double dDrift, 
+        const double dVol,
+        const std::size_t numDays
+    );
 };

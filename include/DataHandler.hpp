@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "Globals.hpp"
+#include "MonteCarloEngine.hpp"
 
 struct StockData 
 {
@@ -17,6 +18,35 @@ struct StockData
 
 namespace DataHandler
 {
+
+static void WritePathsToCSV(const Returns& returns, const std::string& filename) 
+{
+    std::ofstream file(filename);
+
+    if (!file.is_open()) 
+    {
+        std::cerr << "Error opening file: " << filename << '\n';
+        return;
+    }
+
+    std::size_t numPaths = returns.m_returns.size() / returns.m_blockSize;
+
+    for (std::size_t i = 0; i < numPaths; ++i) 
+    {
+        for (std::size_t j = 0; j < returns.m_blockSize; ++j) 
+        {
+            file << returns.m_returns[i * returns.m_blockSize + j];
+            if (j < returns.m_blockSize - 1) 
+            {
+                file << ",";
+            }
+        }
+        file << "\n";
+    }
+
+    file.close();
+    std::cout << "CSV file written: " << filename << '\n';
+}
 
 static StockData ParseStockData(const std::string& ticker)
 {

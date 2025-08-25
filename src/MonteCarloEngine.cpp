@@ -3,7 +3,8 @@
 #include <cassert>
 #include <random>
 #include <cmath>
-#include <arm_neon.h>
+#include <algorithm>
+#include <functional>
 
 #include "../include/MonteCarloEngine.hpp"
 #include "../include/DataHandler.hpp"
@@ -15,6 +16,7 @@ MonteCarloEngine::MonteCarloEngine()
     for(std::size_t i = 0; i < m_NUM_THREADS; ++i)
     {
         m_normal_rngs.emplace_back();
+        m_threadPool.emplace_back();
     }
 }
 
@@ -26,37 +28,30 @@ Returns MonteCarloEngine::GenerateReturns
 (
     double drift,
     double volatility,
-    std::size_t numPaths/* = 1000000*/, 
-    std::size_t numDays/* = 252*/
+    std::size_t numPaths/*1000000*/, 
+    std::size_t numDays/*252*/
 )
 {
     Returns returns;
     returns.m_returns.resize(numPaths * numDays);
     returns.m_blockSize = numDays;
 
-    double dt = 1.0 / 252.0;
+    const double dt = 1.0 / 252.0;
+    const double dailyVolatility = volatility * std::sqrt(dt);
+    const double dailyDrift = drift * dt;
 
     std::vector<std::thread> threads;
     threads.reserve(m_NUM_THREADS);
 
-    std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
+    const std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
 
-    for(std::size_t t = 0; t < m_NUM_THREADS; ++t)
+    for(std::size_t threadIdx = 0; threadIdx < m_NUM_THREADS; ++threadIdx)
     {
-        std::size_t startPath = t * pathsPerThread;
-        std::size_t endPath = (t == m_NUM_THREADS - 1) ? numPaths : (t + 1) * pathsPerThread;
+        const std::size_t startPath = threadIdx * pathsPerThread;
+        const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
 
-        threads.emplace_back([&, t, startPath, endPath, drift, volatility, dt]()
-        {
-            NormalRNG& localRng = m_normal_rngs[t];
-
-            for(std::size_t path = startPath; path < endPath; ++path)
-            {
-                for(std::size_t day = 0; day < numDays; ++day)
-                {        
-                    returns.m_returns[path * numDays + day] = drift * dt + volatility * std::sqrt(dt) * localRng();
-                }
-            }
+        threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
+            GenerateReturnsJob(returns.m_returns, threadIdx, startPath, endPath, dailyDrift, dailyVolatility, numDays);
         });
     }
 
@@ -70,6 +65,36 @@ Returns MonteCarloEngine::GenerateReturns
 
     return returns;
 }
+
+Returns MonteCarloEngine::BuildPricePaths
+(
+    const Returns& returns,
+    double initialPrice
+) 
+{
+    std::size_t n = returns.m_returns.size();
+    
+    Returns prices;
+    prices.m_returns.resize(n);
+    prices.m_blockSize = returns.m_blockSize;
+
+    double S = initialPrice;
+    std::size_t idx = 0;
+    while(idx < n)
+    {
+        if(idx % returns.m_blockSize == 0)
+        {
+            S = initialPrice;
+        }
+
+        S *= std::exp(returns.m_returns[idx]);
+        prices.m_returns[idx] = S;
+        idx++;
+    }
+
+    return prices;
+}
+
 
 std::pair<double, double> MonteCarloEngine::CalculatePortfolioStatistics
 (
@@ -112,3 +137,25 @@ std::pair<double, double> MonteCarloEngine::CalculatePortfolioStatistics
 }
 
 /* -------------------------- PRIVATE METHODS ------------------------------ */
+
+void MonteCarloEngine::GenerateReturnsJob
+( 
+    std::vector<double>& returns,
+    const std::size_t threadIdx, 
+    const std::size_t pStartIdx, 
+    const std::size_t pEndIdx, 
+    const double dDrift, 
+    const double dVol,
+    const std::size_t numDays
+)
+{
+
+    NormalRNG& localRng = m_normal_rngs[threadIdx];
+
+    for(std::size_t path = pStartIdx; path < pEndIdx; ++path)
+    {                
+        std::size_t baseIdx = path * numDays;
+        std::generate(returns.begin() + baseIdx, returns.begin() + baseIdx + numDays, [&]() 
+            { return dDrift + dVol * localRng(); });
+    }
+}

@@ -59,15 +59,17 @@ int main(int argc, char* argv[])
 
     Portfolio portfolio(tickers, weights);
 
-    double mean10R = portfolio.GetMeanReturnOfSegment(10);
-    double stddev = portfolio.GetStandardDeviation();
-    double VaR = portfolio.GetVaR();
-    double CVaR = portfolio.GetCVaR();
+    const double mean10R = portfolio.GetMeanReturnOfSegment(10);
+    const double stddev = portfolio.GetStandardDeviation();
+    const double VaR = portfolio.GetVaR();
+    const double CVaR = portfolio.GetCVaR();
+    const double sharpeRatio = portfolio.GetSharpeRatio();
 
     std::cout << "Mean 10 Day Return: " << mean10R * 100 << "%" << '\n';
     std::cout << "STD: " << stddev * 100 << "%" << '\n';
     std::cout << "Portfolio VaR: " << VaR * 100 << "%" << '\n';
     std::cout << "Portfolio CVaR: " << CVaR * 100 << "%" << '\n';
+    std::cout << "Portfolio Sharpe Ratio: " << sharpeRatio << '\n';
 
     MonteCarloEngine mce;
 
@@ -76,8 +78,12 @@ int main(int argc, char* argv[])
     auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
 
     auto start = std::chrono::system_clock::now();
-    Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd);
+    Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, 100);
     auto end = std::chrono::system_clock::now();
+
+    Returns prices = mce.BuildPricePaths(returns, 100);
+
+    DataHandler::WritePathsToCSV(prices, "../paths/monte_carlo_simul6.csv");
 
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" <<'\n';
 }
