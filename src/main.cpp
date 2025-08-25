@@ -76,17 +76,8 @@ int main(int argc, char* argv[])
     auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
 
     auto start = std::chrono::system_clock::now();
-    std::vector<std::vector<double>> returns = mce.GenerateReturns(portfolio, portfolioMean, portfolioStd);
+    std::vector<std::vector<double>> returns = mce.GenerateReturns(portfolioMean, portfolioStd);
     auto end = std::chrono::system_clock::now();
 
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" <<'\n';
-
-    // for(std::size_t i = 0; i < returns.size(); ++i)
-    // {
-    //     for(std::size_t j = 0; j < returns[i].size(); ++j)
-    //     {
-    //         std::cout << returns[i][j] << " ";
-    //     }       
-    //     std::cout << '\n';
-    // }
 }

@@ -11,6 +11,10 @@
 
 MonteCarloEngine::MonteCarloEngine()
 {
+    for(std::size_t i = 0; i < m_NUM_THREADS; ++i)
+    {
+        m_normal_rngs.emplace_back();
+    }
 }
 
 MonteCarloEngine::~MonteCarloEngine()
@@ -19,7 +23,6 @@ MonteCarloEngine::~MonteCarloEngine()
 
 std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
 (
-    const Portfolio& portfolio, 
     double drift,
     double volatility,
     std::size_t numPaths/* = 1000000*/, 
@@ -30,18 +33,18 @@ std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
     double dt = 1.0 / 252.0;
 
     std::vector<std::thread> threads;
-    threads.reserve(m_numThreads);
+    threads.reserve(m_NUM_THREADS);
 
-    std::size_t pathsPerThread = numPaths / m_numThreads;
+    std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
 
-    for(std::size_t t = 0; t < m_numThreads; ++t)
+    for(std::size_t t = 0; t < m_NUM_THREADS; ++t)
     {
         std::size_t startPath = t * pathsPerThread;
-        std::size_t endPath = (t == m_numThreads - 1) ? numPaths : (t + 1) * pathsPerThread;
+        std::size_t endPath = (t == m_NUM_THREADS - 1) ? numPaths : (t + 1) * pathsPerThread;
 
-        threads.emplace_back([&, startPath, endPath, drift, volatility, dt]()
+        threads.emplace_back([&, t, startPath, endPath, drift, volatility, dt]()
         {
-            NormalRNG localRng(0.0, 1.0);
+            NormalRNG& localRng = m_normal_rngs[t];
 
             for(std::size_t path = startPath; path < endPath; ++path)
             {

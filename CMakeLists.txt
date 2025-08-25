@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Project configuration
 project(PortfolioRiskManager VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
@@ -9,91 +8,186 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Include directories
-include_directories(include)
+set(PROJECT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 
 # Automatically find all .cpp files in src directory
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Create main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_INCLUDE_DIR})
 
-# Set target properties for the main executable
-target_include_directories(${PROJECT_NAME} PRIVATE include)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+# Compiler warnings
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+endif()
+
+# Aggressive Release optimizations
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
+    $<$<CONFIG:Release>:
+        # Core optimizations (supported by both GCC and Clang)
+        -O3
+        -march=native
+        -flto
+        -ffast-math
+        -funroll-loops
+        -fomit-frame-pointer
+        -finline-functions
+        -fdata-sections
+        -ffunction-sections
+        
+        # GCC-specific optimizations
+        $<$<CXX_COMPILER_ID:GNU>:
+            -mtune=native
+            -fprefetch-loop-arrays
+            -ftracer
+            -floop-parallelize-all
+            -ftree-vectorize
+            -fvect-cost-model=dynamic
+            -fmerge-all-constants
+            -fgcse-after-reload
+            -fipa-cp-clone
+            -floop-interchange
+            -floop-unroll-and-jam
+            -fpeel-loops
+            -fpredictive-commoning
+            -fsplit-loops
+            -ftree-loop-distribution
+            -ftree-loop-distribute-patterns
+            -ftree-partial-pre
+            -funswitch-loops
+            -fversion-loops-for-strides
+            -fweb
+        >
+        
+        # Clang-specific optimizations
+        $<$<CXX_COMPILER_ID:Clang>:
+            -fvectorize
+            -fslp-vectorize
+            -fmerge-all-constants
+        >
+    >
+)
+
+# Link-time optimizations for Release
+target_link_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Release>:
+        -flto
+        # Platform-specific linker optimizations
+        $<$<PLATFORM_ID:Linux>:
+            -Wl,--gc-sections
+            -Wl,-O3
+            -Wl,--as-needed
+            -Wl,--sort-common
+        >
+        $<$<PLATFORM_ID:Darwin>:
+            -Wl,-dead_strip
+            -Wl,-O3
+        >
+    >
+)
+
+# Preprocessor definitions for Release
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
+    $<$<CONFIG:Release>:
+        NDEBUG
+        _FORTIFY_SOURCE=2
+    >
+)
+
+# Profile-Guided Optimization support (optional)
+option(USE_PGO "Enable Profile-Guided Optimization" OFF)
+if(USE_PGO AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    # First pass: generate profile data
+    target_compile_options(${PROJECT_NAME} PRIVATE -fprofile-generate)
+    target_link_options(${PROJECT_NAME} PRIVATE -fprofile-generate)
+    
+    # Second pass would use: -fprofile-use
+    # This requires a two-stage build process
+endif()
 
 # Enable testing
 enable_testing()
-
-# Set policy for FetchContent timestamps
-if(POLICY CMP0135)
-    cmake_policy(SET CMP0135 NEW)
-endif()
-
-# Download and configure GoogleTest
 include(FetchContent)
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.14.0
-)
 
-# For Windows: Prevent overriding the parent project's compiler/linker settings
+# GoogleTest
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.14.0
+)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Find all test files
 file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
 
-# Create test executable
 if(TEST_SOURCES)
     add_executable(tests ${TEST_SOURCES})
-    
-    # Link GoogleTest libraries
-    target_link_libraries(tests
-        GTest::gtest_main
-        GTest::gmock_main
-    )
-    
-    # Include directories for tests
-    target_include_directories(tests PRIVATE include)
+    target_include_directories(tests PRIVATE ${PROJECT_INCLUDE_DIR})
     target_compile_features(tests PRIVATE cxx_std_23)
-    
-    # Discover and register tests
+    target_link_libraries(tests PRIVATE GTest::gmock_main)
+
+    # Compiler flags for tests (less aggressive optimization for debugging)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(tests PRIVATE -Wall -Wextra -Wpedantic -O2)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(tests PRIVATE /W4 /O2)
+    endif()
+
+    # Discover tests
     include(GoogleTest)
     gtest_discover_tests(tests)
 endif()
 
-# Compiler-specific options
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-    if(TARGET tests)
-        target_compile_options(tests PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-    if(TARGET tests)
-        target_compile_options(tests PRIVATE /W4)
-    endif()
-endif()
+# Additional build configurations
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel" CACHE STRING "" FORCE)
 
-# Build type specific options
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
-    if(TARGET tests)
-        target_compile_options(tests PRIVATE -g -O0)
-    endif()
-endif()
-
-# Define project root so it can be used in C++ code
-target_compile_definitions(${PROJECT_NAME} PRIVATE 
-    PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
+# MinSizeRel optimizations (for size-constrained environments)
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:MinSizeRel>:-Os -march=native -flto -fdata-sections -ffunction-sections>
+)
+target_link_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:MinSizeRel>:
+        -flto
+        $<$<PLATFORM_ID:Linux>:-Wl,--gc-sections -s>
+        $<$<PLATFORM_ID:Darwin>:-Wl,-dead_strip -Wl,-S>
+    >
 )
 
-# Print configuration summary
+# RelWithDebInfo optimizations (optimized but with debug symbols)
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:RelWithDebInfo>:-O2 -g -march=native -fno-omit-frame-pointer>
+)
+
+# Summary
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Source files found: ${SOURCES}")
 if(TEST_SOURCES)
     message(STATUS "Test files found: ${TEST_SOURCES}")
+endif()
+
+# Performance hints
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "")
+    message(STATUS "=== PERFORMANCE OPTIMIZATIONS ENABLED ===")
+    message(STATUS "- Link-time optimization (LTO)")
+    message(STATUS "- Native CPU architecture targeting")
+    message(STATUS "- Aggressive loop optimizations")
+    message(STATUS "- Fast math operations")
+    message(STATUS "- Dead code elimination")
+    message(STATUS "- Function inlining")
+    message(STATUS "")
+    message(STATUS "For maximum performance:")
+    message(STATUS "1. Use 'make -j$(nproc)' or 'ninja' for parallel builds")
+    message(STATUS "2. Consider enabling PGO with -DUSE_PGO=ON")
+    message(STATUS "3. Ensure your CPU supports the generated instructions")
+    message(STATUS "")
 endif()
