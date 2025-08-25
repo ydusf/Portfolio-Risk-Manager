@@ -116,7 +116,7 @@ double Portfolio::GetVaR(double confidence) const
     std::vector<double> sorted = m_dailyReturnSeries;
     std::sort(sorted.begin(), sorted.end());
     
-    size_t index = static_cast<size_t>((1.0 - confidence) * sorted.size());
+    std::size_t index = static_cast<std::size_t>((1.0 - confidence) * sorted.size());
     return -sorted[index];
 }
 
@@ -128,11 +128,11 @@ double Portfolio::GetCVaR(double confidence) const
     std::vector<double> sorted = m_dailyReturnSeries;
     std::sort(sorted.begin(), sorted.end());
     
-    size_t index = static_cast<size_t>((1.0 - confidence) * sorted.size());
+    std::size_t index = static_cast<std::size_t>((1.0 - confidence) * sorted.size());
     double var_threshold = sorted[index];
     
     double sum = 0.0;
-    size_t count = 0;
+    std::size_t count = 0;
     for(double r : sorted) 
     {
         if(r <= var_threshold) 

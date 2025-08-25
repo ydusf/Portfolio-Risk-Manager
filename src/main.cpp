@@ -7,6 +7,8 @@
 
 #include "../include/Globals.hpp"
 #include "../include/Portfolio.hpp"
+#include "../include/MonteCarloEngine.hpp"
+#include "../include/DataHandler.hpp"
 
 // EXAMPLE: ./run.sh NVDA=0.15 GOOGL=0.1 AGYS=0.08 AMZN=0.03 MU=0.06 MSFT=0.03 NU=0.04 LLY=0.085 UNH=0.2 NVO=0.225
 
@@ -66,4 +68,25 @@ int main(int argc, char* argv[])
     std::cout << "STD: " << stddev * 100 << "%" << '\n';
     std::cout << "Portfolio VaR: " << VaR * 100 << "%" << '\n';
     std::cout << "Portfolio CVaR: " << CVaR * 100 << "%" << '\n';
+
+    MonteCarloEngine mce;
+
+    std::vector<std::vector<double>> logReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
+
+    auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
+
+    auto start = std::chrono::system_clock::now();
+    std::vector<std::vector<double>> returns = mce.GenerateReturns(portfolio, portfolioMean, portfolioStd);
+    auto end = std::chrono::system_clock::now();
+
+    std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" <<'\n';
+
+    // for(std::size_t i = 0; i < returns.size(); ++i)
+    // {
+    //     for(std::size_t j = 0; j < returns[i].size(); ++j)
+    //     {
+    //         std::cout << returns[i][j] << " ";
+    //     }       
+    //     std::cout << '\n';
+    // }
 }

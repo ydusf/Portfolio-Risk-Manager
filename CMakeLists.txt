@@ -78,9 +78,9 @@ endif()
 
 # Build type specific options
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG)
+    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
     if(TARGET tests)
-        target_compile_definitions(tests PRIVATE DEBUG)
+        target_compile_options(tests PRIVATE -g -O0)
     endif()
 endif()
 
