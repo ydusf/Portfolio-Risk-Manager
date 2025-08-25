@@ -3,6 +3,7 @@
 #include <cassert>
 #include <random>
 #include <cmath>
+#include <arm_neon.h>
 
 #include "../include/MonteCarloEngine.hpp"
 #include "../include/DataHandler.hpp"
@@ -21,7 +22,7 @@ MonteCarloEngine::~MonteCarloEngine()
 {
 }
 
-std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
+Returns MonteCarloEngine::GenerateReturns
 (
     double drift,
     double volatility,
@@ -29,7 +30,10 @@ std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
     std::size_t numDays/* = 252*/
 )
 {
-    std::vector<std::vector<double>> paths(numPaths, std::vector<double>(numDays));
+    Returns returns;
+    returns.m_returns.resize(numPaths * numDays);
+    returns.m_blockSize = numDays;
+
     double dt = 1.0 / 252.0;
 
     std::vector<std::thread> threads;
@@ -50,9 +54,7 @@ std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
             {
                 for(std::size_t day = 0; day < numDays; ++day)
                 {        
-                    double gbmMulti = localRng();
-                    double dailyReturn = drift * dt + volatility * std::sqrt(dt) * gbmMulti;
-                    paths[path][day] = dailyReturn;
+                    returns.m_returns[path * numDays + day] = drift * dt + volatility * std::sqrt(dt) * localRng();
                 }
             }
         });
@@ -60,10 +62,13 @@ std::vector<std::vector<double>> MonteCarloEngine::GenerateReturns
 
     for(std::thread& th : threads)
     {
-        th.join();
+        if(th.joinable())
+        {
+            th.join();
+        }
     }
 
-    return paths;
+    return returns;
 }
 
 std::pair<double, double> MonteCarloEngine::CalculatePortfolioStatistics

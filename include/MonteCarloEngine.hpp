@@ -23,6 +23,12 @@ struct NormalRNG
     }
 };
 
+struct Returns
+{
+    std::vector<double> m_returns;
+    std::size_t m_blockSize;
+};
+
 class MonteCarloEngine 
 {
 private:
@@ -38,7 +44,7 @@ public:
         const std::vector<std::vector<double>>& returns, 
         const Portfolio& portfolio
     );
-    std::vector<std::vector<double>> GenerateReturns
+    Returns GenerateReturns
     (        
         double drift,
         double volatility,
