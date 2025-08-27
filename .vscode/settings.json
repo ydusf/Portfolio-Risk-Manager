@@ -59,6 +59,7 @@
         "cassert": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "functional": "cpp"
     }
 }

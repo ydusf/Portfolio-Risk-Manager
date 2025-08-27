@@ -21,16 +21,10 @@ public:
     const std::vector<std::string>& GetTickers() const;
     const std::vector<double>& GetWeights() const;
     const std::map<std::string, double>& GetAssets() const;
-
-    double GetMeanReturnOfSegment(std::size_t segmentDays) const;
-    double GetMeanDailyReturn() const;
-    double GetStandardDeviation() const;
-    double GetVaR(double confidence = 0.95) const;
-    double GetCVaR(double confidence = 0.95) const;
-    double GetSharpeRatio() const;
+    const std::vector<double>& GetReturnSeries() const;
 
     ~Portfolio();
 
 private:
-    std::vector<double> GetReturns();
+    std::vector<double> CreateReturnSeries() const;
 };

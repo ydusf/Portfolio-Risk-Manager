@@ -49,8 +49,8 @@ private:
         const std::size_t threadIdx, 
         const std::size_t pStartIdx, 
         const std::size_t pEndIdx, 
+        const std::size_t numDays,
         const double dDrift, 
-        const double dVol,
-        const std::size_t numDays
+        const double dVol
     );
 };

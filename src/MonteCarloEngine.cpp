@@ -21,8 +21,7 @@ MonteCarloEngine::MonteCarloEngine()
 }
 
 MonteCarloEngine::~MonteCarloEngine()
-{
-}
+{}
 
 Returns MonteCarloEngine::GenerateReturns
 (
@@ -51,7 +50,7 @@ Returns MonteCarloEngine::GenerateReturns
         const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
 
         threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
-            GenerateReturnsJob(returns.m_returns, threadIdx, startPath, endPath, dailyDrift, dailyVolatility, numDays);
+            GenerateReturnsJob(returns.m_returns, threadIdx, startPath, endPath, numDays, dailyDrift, dailyVolatility);
         });
     }
 
@@ -144,12 +143,11 @@ void MonteCarloEngine::GenerateReturnsJob
     const std::size_t threadIdx, 
     const std::size_t pStartIdx, 
     const std::size_t pEndIdx, 
+    const std::size_t numDays,
     const double dDrift, 
-    const double dVol,
-    const std::size_t numDays
+    const double dVol
 )
 {
-
     NormalRNG& localRng = m_normal_rngs[threadIdx];
 
     for(std::size_t path = pStartIdx; path < pEndIdx; ++path)

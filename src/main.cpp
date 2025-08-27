@@ -1,16 +1,20 @@
 #include <iostream>
-#include <functional>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 #include <cassert>
+#include <chrono>
+#include <iomanip>
 
 #include "../include/Globals.hpp"
 #include "../include/Portfolio.hpp"
 #include "../include/MonteCarloEngine.hpp"
 #include "../include/DataHandler.hpp"
+#include "../include/PortfolioUtils.hpp"
 
-// EXAMPLE: ./run.sh NVDA=0.15 GOOGL=0.1 AGYS=0.08 AMZN=0.03 MU=0.06 MSFT=0.03 NU=0.04 LLY=0.085 UNH=0.2 NVO=0.225
+// EXAMPLE USAGE:
+// ./run.sh NVDA=0.15 GOOGL=0.1 AGYS=0.08 AMZN=0.03 MU=0.06 MSFT=0.03 NU=0.04 LLY=0.085 UNH=0.2 NVO=0.225
 
 int main(int argc, char* argv[]) 
 {
@@ -39,6 +43,11 @@ int main(int argc, char* argv[])
         try 
         {
             double weight = std::stod(weightStr);
+            if (weight <= 0.0) 
+            {
+                std::cerr << "Weight for " << ticker << " must be positive.\n";
+                return 1;
+            }
             tickers.push_back(ticker);
             weights.push_back(weight);
         } 
@@ -49,41 +58,58 @@ int main(int argc, char* argv[])
         }
     }
 
-    assert(tickers.size() == weights.size());
+    if (tickers.size() != weights.size()) 
+    {
+        std::cerr << "Error: mismatch between tickers and weights.\n";
+        return 1;
+    }
 
-    std::cout << "Parsed tickers and weights:\n";
+    double totalWeight = 0.0;
+    for (double w : weights) totalWeight += w;
+
+    if (totalWeight <= 0.0) 
+    {
+        std::cerr << "Error: total portfolio weight must be > 0.\n";
+        return 1;
+    }
+
+    for (auto& w : weights) w /= totalWeight;
+
+    std::cout << "Parsed tickers and normalized weights:\n";
     for (std::size_t i = 0; i < tickers.size(); ++i) 
     {
-        std::cout << tickers[i] << " -> " << weights[i] << '\n';
+        std::cout << "  " << tickers[i] << " -> " << std::fixed << std::setprecision(3) << weights[i] * 100 << "%\n";
     }
 
     Portfolio portfolio(tickers, weights);
 
-    const double mean10R = portfolio.GetMeanReturnOfSegment(10);
-    const double stddev = portfolio.GetStandardDeviation();
-    const double VaR = portfolio.GetVaR();
-    const double CVaR = portfolio.GetCVaR();
-    const double sharpeRatio = portfolio.GetSharpeRatio();
+    const double mean10R = PortfolioUtils::GetMeanReturnOfSegment(portfolio, 10);
+    const double stddev  = PortfolioUtils::GetStandardDeviation(portfolio);
+    const double VaR     = PortfolioUtils::GetVaR(portfolio);
+    const double CVaR    = PortfolioUtils::GetCVaR(portfolio);
+    const double sharpe  = PortfolioUtils::GetSharpeRatio(portfolio);
 
-    std::cout << "Mean 10 Day Return: " << mean10R * 100 << "%" << '\n';
-    std::cout << "STD: " << stddev * 100 << "%" << '\n';
-    std::cout << "Portfolio VaR: " << VaR * 100 << "%" << '\n';
-    std::cout << "Portfolio CVaR: " << CVaR * 100 << "%" << '\n';
-    std::cout << "Portfolio Sharpe Ratio: " << sharpeRatio << '\n';
+    std::cout << "\nPortfolio Risk Metrics:\n";
+    std::cout << "  Mean 10-Day Return: " << std::fixed << std::setprecision(2) << mean10R * 100 << "%\n";
+    std::cout << "  Volatility (STD):   " << stddev * 100 << "%\n";
+    std::cout << "  Value-at-Risk (VaR): " << VaR * 100 << "%\n";
+    std::cout << "  Conditional VaR:     " << CVaR * 100 << "%\n";
+    std::cout << "  Sharpe Ratio:        " << sharpe << "\n";
 
     MonteCarloEngine mce;
-
     std::vector<std::vector<double>> logReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
-
     auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
 
-    auto start = std::chrono::system_clock::now();
-    Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, 100);
-    auto end = std::chrono::system_clock::now();
+    constexpr int NUM_SIMS = 1'000'000;
+    auto start = std::chrono::high_resolution_clock::now();
+    Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, NUM_SIMS);
+    auto end = std::chrono::high_resolution_clock::now();
 
-    Returns prices = mce.BuildPricePaths(returns, 100);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    DataHandler::WritePathsToCSV(prices, "../paths/monte_carlo_simul6.csv");
+    std::cout << "\nMonte Carlo Simulation:\n";
+    std::cout << "  Runs: " << NUM_SIMS << "\n";
+    std::cout << "  Time taken: " << duration << " ms\n";
 
-    std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" <<'\n';
+    return 0;
 }
