@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2) 
     {
-        std::cerr << "Usage: " << argv[0] << " TICKER=WEIGHT [...]\n";
+        std::cerr << "Usage: " << argv[0] << " TICKER=WEIGHT [...]" << '\n';
         return 1;
     }
 
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
         auto eqPos = arg.find('=');
         if (eqPos == std::string::npos) 
         {
-            std::cerr << "Invalid argument: " << arg << " (expected TICKER=WEIGHT)\n";
+            std::cerr << "Invalid argument: " << arg << " (expected TICKER=WEIGHT)" << '\n';
             return 1;
         }
 
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
             double weight = std::stod(weightStr);
             if (weight <= 0.0) 
             {
-                std::cerr << "Weight for " << ticker << " must be positive.\n";
+                std::cerr << "Weight for " << ticker << " must be positive." << '\n';
                 return 1;
             }
             tickers.push_back(ticker);
@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 
     if (tickers.size() != weights.size()) 
     {
-        std::cerr << "Error: mismatch between tickers and weights.\n";
+        std::cerr << "Error: mismatch between tickers and weights." << '\n';
         return 1;
     }
 
@@ -69,16 +69,16 @@ int main(int argc, char* argv[])
 
     if (totalWeight <= 0.0) 
     {
-        std::cerr << "Error: total portfolio weight must be > 0.\n";
+        std::cerr << "Error: total portfolio weight must be > 0." << '\n';
         return 1;
     }
 
     for (auto& w : weights) w /= totalWeight;
 
-    std::cout << "Parsed tickers and normalized weights:\n";
+    std::cout << "Parsed tickers and normalized weights:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i) 
     {
-        std::cout << "  " << tickers[i] << " -> " << std::fixed << std::setprecision(3) << weights[i] * 100 << "%\n";
+        std::cout << "  " << tickers[i] << " -> " << std::fixed << std::setprecision(3) << weights[i] * 100 << "%" << '\n';
     }
 
     Portfolio portfolio(tickers, weights);
@@ -89,12 +89,12 @@ int main(int argc, char* argv[])
     const double CVaR    = PortfolioUtils::GetCVaR(portfolio);
     const double sharpe  = PortfolioUtils::GetSharpeRatio(portfolio);
 
-    std::cout << "\nPortfolio Risk Metrics:\n";
-    std::cout << "  Mean 10-Day Return: " << std::fixed << std::setprecision(2) << mean10R * 100 << "%\n";
-    std::cout << "  Volatility (STD):   " << stddev * 100 << "%\n";
-    std::cout << "  Value-at-Risk (VaR): " << VaR * 100 << "%\n";
-    std::cout << "  Conditional VaR:     " << CVaR * 100 << "%\n";
-    std::cout << "  Sharpe Ratio:        " << sharpe << "\n";
+    std::cout << "\nPortfolio Risk Metrics:" << '\n';
+    std::cout << "  Mean 10-Day Return: " << std::fixed << std::setprecision(2) << mean10R * 100 << "%" << '\n';
+    std::cout << "  Volatility (STD):   " << stddev * 100 << "%" << '\n';
+    std::cout << "  Value-at-Risk (VaR): " << VaR * 100 << "%" << '\n';
+    std::cout << "  Conditional VaR:     " << CVaR * 100 << "%" << '\n';
+    std::cout << "  Sharpe Ratio:        " << sharpe << "" << '\n';
 
     MonteCarloEngine mce;
     std::vector<std::vector<double>> logReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
@@ -107,9 +107,9 @@ int main(int argc, char* argv[])
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::cout << "\nMonte Carlo Simulation:\n";
-    std::cout << "  Runs: " << NUM_SIMS << "\n";
-    std::cout << "  Time taken: " << duration << " ms\n";
+    std::cout << "\nMonte Carlo Simulation:" << '\n';
+    std::cout << "  Runs: " << NUM_SIMS << "" << '\n';
+    std::cout << "  Time taken: " << duration << " ms" << '\n';
 
     return 0;
 }
