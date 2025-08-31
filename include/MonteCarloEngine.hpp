@@ -16,9 +16,7 @@ class MonteCarloEngine
 {
 private:
     const std::size_t m_NUM_THREADS = std::thread::hardware_concurrency();
-    std::vector<NormalRNG> m_normal_rngs;
-
-    std::vector<std::thread> m_threadPool;
+    std::vector<GenNormalPCG> m_normal_rngs;
 
 public:
     MonteCarloEngine();

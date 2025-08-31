@@ -1,20 +1,27 @@
 #pragma once
 
-#include <random>
+#include "lib/pcg_random.hpp"
 
-struct NormalRNG
+struct GenNormalPCG 
 {
-    std::mt19937 m_gen;
-    std::normal_distribution<double> m_dist;
+    pcg64_fast rng;
+    std::normal_distribution<double> dist;
 
-    NormalRNG() 
-        : NormalRNG(0.0, 1.0, std::random_device{}()) {}
+    GenNormalPCG() : GenNormalPCG(0.0, 1.0) {}
 
-    NormalRNG(double mean, double stddev, unsigned seed = std::random_device{}())
-        : m_gen(seed), m_dist(mean, stddev) {}
+    GenNormalPCG(double mean, double stddev)
+        : rng(seedFromDevice()), dist(mean, stddev) {}
 
-    double operator()()
+    double operator()() 
     {
-        return m_dist(m_gen);
+        return dist(rng);
+    }
+
+private:
+    static uint64_t seedFromDevice() 
+    {
+        std::random_device rd;
+        uint64_t seed = (static_cast<uint64_t>(rd()) << 32) ^ rd();
+        return seed;
     }
 };

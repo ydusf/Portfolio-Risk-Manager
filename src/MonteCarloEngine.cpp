@@ -16,7 +16,6 @@ MonteCarloEngine::MonteCarloEngine()
     for(std::size_t i = 0; i < m_NUM_THREADS; ++i)
     {
         m_normal_rngs.emplace_back();
-        m_threadPool.emplace_back();
     }
 }
 
@@ -35,7 +34,7 @@ Returns MonteCarloEngine::GenerateReturns
     returns.m_returns.resize(numPaths * numDays);
     returns.m_blockSize = numDays;
 
-    const double dt = 1.0 / 252.0;
+    constexpr double dt = 1.0 / 252.0;
     const double dailyVolatility = volatility * std::sqrt(dt);
     const double dailyDrift = drift * dt;
 
@@ -148,7 +147,7 @@ void MonteCarloEngine::GenerateReturnsJob
     const double dVol
 )
 {
-    NormalRNG& localRng = m_normal_rngs[threadIdx];
+    GenNormalPCG& localRng = m_normal_rngs[threadIdx];
 
     for(std::size_t path = pStartIdx; path < pEndIdx; ++path)
     {                

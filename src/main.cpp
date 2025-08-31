@@ -27,10 +27,10 @@ int main(int argc, char* argv[])
     std::vector<std::string> tickers;
     std::vector<double> weights;
 
-    for (int i = 1; i < argc; ++i) 
+    for (std::size_t i = 1; i < argc; ++i) 
     {
         std::string arg = argv[i];
-        auto eqPos = arg.find('=');
+        std::size_t eqPos = arg.find('=');
         if (eqPos == std::string::npos) 
         {
             std::cerr << "Invalid argument: " << arg << " (expected TICKER=WEIGHT)" << '\n';
@@ -65,7 +65,10 @@ int main(int argc, char* argv[])
     }
 
     double totalWeight = 0.0;
-    for (double w : weights) totalWeight += w;
+    for (double w : weights) 
+    {
+        totalWeight += w;
+    }
 
     if (totalWeight <= 0.0) 
     {
@@ -73,7 +76,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    for (auto& w : weights) w /= totalWeight;
+    for (double& w : weights) 
+    {
+        w /= totalWeight;
+    }
 
     std::cout << "Parsed tickers and normalized weights:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i) 
@@ -83,15 +89,17 @@ int main(int argc, char* argv[])
 
     Portfolio portfolio(tickers, weights);
 
-    const double mean10R = PortfolioUtils::GetMeanReturnOfSegment(portfolio, 10);
-    const double stddev  = PortfolioUtils::GetStandardDeviation(portfolio);
-    const double VaR     = PortfolioUtils::GetVaR(portfolio);
-    const double CVaR    = PortfolioUtils::GetCVaR(portfolio);
-    const double sharpe  = PortfolioUtils::GetSharpeRatio(portfolio);
+    const double totalReturn = PortfolioUtils::GetMeanReturnOfSegment(portfolio, portfolio.GetReturnSeries().size());
+    const double mean10R     = PortfolioUtils::GetMeanReturnOfSegment(portfolio, 10);
+    const double stddev      = PortfolioUtils::GetStandardDeviation(portfolio);
+    const double VaR         = PortfolioUtils::GetVaR(portfolio);
+    const double CVaR        = PortfolioUtils::GetCVaR(portfolio);
+    const double sharpe      = PortfolioUtils::GetSharpeRatio(portfolio);
 
     std::cout << "\nPortfolio Risk Metrics:" << '\n';
-    std::cout << "  Mean 10-Day Return: " << std::fixed << std::setprecision(2) << mean10R * 100 << "%" << '\n';
-    std::cout << "  Volatility (STD):   " << stddev * 100 << "%" << '\n';
+    std::cout << "  Total Return:        " << std::fixed << std::setprecision(2) << totalReturn * 100 << "%" << '\n';
+    std::cout << "  Mean 10-Day Return:  " << std::fixed << std::setprecision(2) << mean10R * 100 << "%" << '\n';
+    std::cout << "  Volatility (STD):    " << stddev * 100 << "%" << '\n';
     std::cout << "  Value-at-Risk (VaR): " << VaR * 100 << "%" << '\n';
     std::cout << "  Conditional VaR:     " << CVaR * 100 << "%" << '\n';
     std::cout << "  Sharpe Ratio:        " << sharpe << "" << '\n';
