@@ -1,5 +1,6 @@
 #pragma once
 
+#include <random>
 #include "lib/pcg_random.hpp"
 
 struct GenNormalPCG 

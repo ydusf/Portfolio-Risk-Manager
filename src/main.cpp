@@ -115,6 +115,9 @@ int main(int argc, char* argv[])
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+    Returns pricePaths = mce.BuildPricePaths(returns, 100);
+    DataHandler::WritePathsToCSV(pricePaths, "../paths/test_paths.csv");
+
     std::cout << "\nMonte Carlo Simulation:" << '\n';
     std::cout << "  Runs: " << NUM_SIMS << "" << '\n';
     std::cout << "  Time taken: " << duration << " ms" << '\n';
