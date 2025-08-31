@@ -17,4 +17,4 @@ def plot_paths_from_csv(filename):
 
 
 if __name__ == "__main__":  
-    plot_paths_from_csv("./paths/monte_carlo_simul6.csv")
+    plot_paths_from_csv("./paths/test_paths.csv")

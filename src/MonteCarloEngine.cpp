@@ -12,12 +12,7 @@
 /* -------------------------- PUBLIC METHODS ------------------------------ */
 
 MonteCarloEngine::MonteCarloEngine()
-{
-    for(std::size_t i = 0; i < m_NUM_THREADS; ++i)
-    {
-        m_normal_rngs.emplace_back();
-    }
-}
+{}
 
 MonteCarloEngine::~MonteCarloEngine()
 {}
@@ -49,7 +44,15 @@ Returns MonteCarloEngine::GenerateReturns
         const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
 
         threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
-            GenerateReturnsJob(returns.m_returns, threadIdx, startPath, endPath, numDays, dailyDrift, dailyVolatility);
+            thread_local static pcg64_fast rng;
+            for(std::size_t path = startPath; path < endPath; ++path)
+            {                
+                std::size_t baseIdx = path * numDays;
+                for(std::size_t day = baseIdx; day < baseIdx + numDays; ++day)
+                {
+                    returns.m_returns[day] = dailyDrift + dailyVolatility * rng();
+                }
+            }
         });
     }
 
@@ -132,27 +135,4 @@ std::pair<double, double> MonteCarloEngine::CalculatePortfolioStatistics
     double stddev = std::sqrt(variance);
 
     return std::make_pair(meanRet, stddev);
-}
-
-/* -------------------------- PRIVATE METHODS ------------------------------ */
-
-void MonteCarloEngine::GenerateReturnsJob
-( 
-    std::vector<double>& returns,
-    const std::size_t threadIdx, 
-    const std::size_t pStartIdx, 
-    const std::size_t pEndIdx, 
-    const std::size_t numDays,
-    const double dDrift, 
-    const double dVol
-)
-{
-    GenNormalPCG& localRng = m_normal_rngs[threadIdx];
-
-    for(std::size_t path = pStartIdx; path < pEndIdx; ++path)
-    {                
-        std::size_t baseIdx = path * numDays;
-        std::generate(returns.begin() + baseIdx, returns.begin() + baseIdx + numDays, [&]() 
-            { return dDrift + dVol * localRng(); });
-    }
 }

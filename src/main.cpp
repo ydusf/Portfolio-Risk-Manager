@@ -108,15 +108,15 @@ int main(int argc, char* argv[])
     std::vector<std::vector<double>> logReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
     auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
 
-    constexpr int NUM_SIMS = 1'000'000;
+    constexpr int NUM_SIMS = 1'000'0000;
     auto start = std::chrono::high_resolution_clock::now();
     Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, NUM_SIMS);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    Returns pricePaths = mce.BuildPricePaths(returns, 100);
-    DataHandler::WritePathsToCSV(pricePaths, "../paths/test_paths.csv");
+    // Returns pricePaths = mce.BuildPricePaths(returns, 100);
+    // DataHandler::WritePathsToCSV(pricePaths, "../paths/test_paths.csv");
 
     std::cout << "\nMonte Carlo Simulation:" << '\n';
     std::cout << "  Runs: " << NUM_SIMS << "" << '\n';

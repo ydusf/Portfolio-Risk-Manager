@@ -16,7 +16,6 @@ class MonteCarloEngine
 {
 private:
     const std::size_t m_NUM_THREADS = std::thread::hardware_concurrency();
-    std::vector<GenNormalPCG> m_normal_rngs;
 
 public:
     MonteCarloEngine();
@@ -38,17 +37,5 @@ public:
     (
         const Returns& returns,
         double initialPrice
-    );
-
-private:
-    void GenerateReturnsJob
-    ( 
-        std::vector<double>& returns,
-        const std::size_t threadIdx, 
-        const std::size_t pStartIdx, 
-        const std::size_t pEndIdx, 
-        const std::size_t numDays,
-        const double dDrift, 
-        const double dVol
     );
 };
