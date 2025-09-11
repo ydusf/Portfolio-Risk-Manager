@@ -21,7 +21,7 @@ A high-performance C++ application for portfolio risk analysis and Monte Carlo s
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ydusf/Portfolio-Risk-Manager.git
    cd PortfolioRiskManager
    ```
 
@@ -71,7 +71,7 @@ Portfolio Risk Metrics:
 
 Monte Carlo Simulation:
   Runs: 1,000,000
-  Time taken: 245 ms
+  Time taken: 650 ms
 ```
 
 ## Build Configurations
@@ -134,8 +134,8 @@ namespace PortfolioUtils {
 
 ### Performance Benchmarks
 
-Typical performance on modern hardware:
-- 1M Monte Carlo paths: ~200-300ms
+Typical performance on M1 Macbook Air:
+- 1M Monte Carlo paths: ~500-900ms
 - Portfolio risk calculation: <10ms
 - Multi-asset data processing: <50ms
 
@@ -226,7 +226,7 @@ cmake -DUSE_PGO=ON -DCMAKE_BUILD_TYPE=Release ..
 
 ## License
 
-[Specify your license here]
+No license at the moment
 
 ## Performance Tips
 
