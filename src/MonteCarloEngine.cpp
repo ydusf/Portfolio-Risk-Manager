@@ -44,7 +44,7 @@ Returns MonteCarloEngine::GenerateReturns
         const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
 
         threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
-            thread_local static pcg64_fast rng;
+            thread_local static GenNormalPCG rng;
             for(std::size_t path = startPath; path < endPath; ++path)
             {                
                 std::size_t baseIdx = path * numDays;
@@ -58,10 +58,7 @@ Returns MonteCarloEngine::GenerateReturns
 
     for(std::thread& th : threads)
     {
-        if(th.joinable())
-        {
-            th.join();
-        }
+        th.join();
     }
 
     return returns;

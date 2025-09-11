@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     std::vector<std::vector<double>> logReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
     auto [portfolioMean, portfolioStd] = mce.CalculatePortfolioStatistics(logReturns, portfolio);
 
-    constexpr int NUM_SIMS = 1'000'0000;
+    constexpr int NUM_SIMS = 1'000'000;
     auto start = std::chrono::high_resolution_clock::now();
     Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, NUM_SIMS);
     auto end = std::chrono::high_resolution_clock::now();

@@ -3,7 +3,7 @@ import yfinance as yf
 import os
 import sys
 
-def download_assets(tickers: List[str], start_date="2024-11-12", end_date="2025-08-21"):
+def download_assets(tickers: List[str], start_date="2020-11-12", end_date="2025-08-21"):
     save_to = "assets/"
     os.makedirs(save_to, exist_ok=True)  # Create folder if it doesn't exist
 
