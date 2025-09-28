@@ -4,5 +4,5 @@
 
 namespace PortfolioOptimiser
 {
-    Portfolio MeanVarianceOptimise(const Portfolio& portfolio);
+    Portfolio MaximiseSharpeRatio(const Portfolio& portfolio);
 }

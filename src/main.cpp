@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     std::vector<std::string> tickers;
     std::vector<double> weights;
 
-    for (std::size_t i = 1; i < argc; ++i) 
+    for (std::size_t i = 1; i < argc-2; ++i) 
     {
         std::string arg = argv[i];
         std::size_t eqPos = arg.find('=');
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
         {
             double weight = std::stod(weightStr);
             if (weight <= 0.0) 
-            {
+            {   
                 std::cerr << "Weight for " << ticker << " must be positive." << '\n';
                 return 1;
             }

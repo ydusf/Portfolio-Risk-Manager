@@ -27,10 +27,13 @@ def download_assets(tickers: List[str], start_date="2020-11-12", end_date="2025-
 if __name__ == "__main__":
     tickers = []
 
-    for arg in sys.argv[1:]:
-        if '=' in arg:
-            ticker = arg.split('=')[0].upper()
-            tickers.append(ticker)
-
+    n_args = len(sys.argv)
+    if n_args > 3:
+        for arg in sys.argv[1:n_args-2]:
+            if '=' in arg:
+                ticker = arg.split('=')[0].upper()
+                tickers.append(ticker)
+                
     if tickers:
-        download_assets(tickers)
+        download_assets(tickers, sys.argv[n_args-2], sys.argv[n_args-1])
+
