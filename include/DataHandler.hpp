@@ -6,10 +6,13 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+#include <filesystem>
 
 #include "Globals.hpp"
 #include "MonteCarloEngine.hpp"
 #include "PortfolioOptimisation.hpp"
+
+namespace fs = std::filesystem;
 
 struct StockData 
 {
@@ -227,6 +230,21 @@ static std::vector<std::vector<double>> GetLogReturnsMat(const std::vector<std::
 
 static void WriteEfficientFrontierToCSV(const PortfolioOptimisation::EfficientFrontier& frontier, const std::string& filename) 
 {
+    fs::path filepath(filename);
+    fs::path dir = filepath.parent_path();
+    if (!dir.empty() && !fs::exists(dir))
+    {
+        try
+        {
+            fs::create_directories(dir);
+        }
+        catch (const fs::filesystem_error& e)
+        {
+            std::cerr << "Error creating directory: " << e.what() << '\n';
+            return;
+        }
+    }
+
     std::ofstream file(filename);
     if (!file.is_open())
     {
@@ -239,9 +257,7 @@ static void WriteEfficientFrontierToCSV(const PortfolioOptimisation::EfficientFr
     for (size_t i = 0; i < frontier.returns.size(); ++i)
     {
         double sharpe = frontier.returns[i] / frontier.volatilities[i];
-        file << frontier.returns[i] << "," 
-            << frontier.volatilities[i] << ","
-            << sharpe << "\n";
+        file << frontier.returns[i] << "," << frontier.volatilities[i] << "," << sharpe << "\n";
     }
     
     file.close();

@@ -17,4 +17,4 @@ def plot_paths_from_csv(filename):
 
 
 if __name__ == "__main__":  
-    plot_paths_from_csv("./paths/test_paths.csv")
+    plot_paths_from_csv("./data/test_paths.csv")
