@@ -2,4 +2,5 @@ build
 .vscode
 venv
 assets
-paths
+data
+.env

@@ -21,21 +21,9 @@ public:
     MonteCarloEngine();
     ~MonteCarloEngine();
     
-    std::pair<double, double> CalculatePortfolioStatistics
-    (
-        const std::vector<std::vector<double>>& returns, 
-        const Portfolio& portfolio
-    );
-    Returns GenerateReturns
-    (        
-        double drift,
-        double volatility,
-        std::size_t numPaths = 1000000, 
-        std::size_t numDays = 252
-    );
-    Returns BuildPricePaths
-    (
-        const Returns& returns,
-        double initialPrice
-    );
+    std::pair<double, double> ComputeAssetStatistics(const std::vector<double>& assetReturns);
+    std::vector<std::pair<double, double>> ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns);
+    std::vector<double> CombineAssetReturns(const Portfolio& portfolio);
+    Returns GenerateReturns(double drift, double volatility, std::size_t numPaths = 1000000, std::size_t numDays = 252);
+    Returns BuildPricePaths(const Returns& returns, double initialPrice);
 };

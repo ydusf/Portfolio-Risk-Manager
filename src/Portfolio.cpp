@@ -61,7 +61,7 @@ const std::vector<double>& Portfolio::GetReturnSeries() const
 
 std::vector<double> Portfolio::CreateReturnSeries() const 
 {
-    const std::vector<std::vector<double>>& returnsMat = DataHandler::GetReturnsMat(m_tickers);
+    const std::vector<std::vector<double>>& returnsMat = DataHandler::GetLogReturnsMat(m_tickers);
 
     std::map<std::size_t, std::string> idxTickerMap;
     for(std::size_t i = 0; i < m_tickers.size(); ++i)
@@ -72,21 +72,25 @@ std::vector<double> Portfolio::CreateReturnSeries() const
     std::vector<double> returns;
     for(std::size_t row = 0; row < returnsMat.size(); ++row)
     {
-        double weightedReturnT = 0.0;
+        double weightedLogReturnT = 0.0;
         for(std::size_t col = 0; col < returnsMat[row].size(); ++col)
         {
             auto tickerItr = idxTickerMap.find(col);
             if(tickerItr == idxTickerMap.end())
+            {
                 continue;
+            }
 
             auto weightItr = m_assets.find(tickerItr->second);
             if(weightItr == m_assets.end())
+            {
                 continue;
+            }
 
-            weightedReturnT += weightItr->second * returnsMat[row][col];
+            weightedLogReturnT += weightItr->second * returnsMat[row][col];
         }
 
-        returns.push_back(weightedReturnT);
+        returns.push_back(weightedLogReturnT);
     }
 
     return returns;

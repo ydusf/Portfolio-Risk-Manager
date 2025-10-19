@@ -17,13 +17,7 @@ MonteCarloEngine::MonteCarloEngine()
 MonteCarloEngine::~MonteCarloEngine()
 {}
 
-Returns MonteCarloEngine::GenerateReturns
-(
-    double drift,
-    double volatility,
-    std::size_t numPaths/*1000000*/, 
-    std::size_t numDays/*252*/
-)
+Returns MonteCarloEngine::GenerateReturns(double drift, double volatility, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
 {
     Returns returns;
     returns.m_returns.resize(numPaths * numDays);
@@ -64,11 +58,7 @@ Returns MonteCarloEngine::GenerateReturns
     return returns;
 }
 
-Returns MonteCarloEngine::BuildPricePaths
-(
-    const Returns& returns,
-    double initialPrice
-) 
+Returns MonteCarloEngine::BuildPricePaths(const Returns& returns, double initialPrice) 
 {
     std::size_t n = returns.m_returns.size();
     
@@ -93,43 +83,62 @@ Returns MonteCarloEngine::BuildPricePaths
     return prices;
 }
 
+std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::vector<double>& assetReturns)
+{
+    assert(!assetReturns.empty());
 
-std::pair<double, double> MonteCarloEngine::CalculatePortfolioStatistics
-(
-    const std::vector<std::vector<double>>& returns, 
-    const Portfolio& portfolio
-)
+    const double n = static_cast<double>(assetReturns.size());
+    const double mean = std::accumulate(assetReturns.begin(), assetReturns.end(), 0.0) / n;
+
+    double sumSquaredDiffs = 0.0;
+
+    for (double r : assetReturns)
+    {
+        sumSquaredDiffs += std::pow(r - mean, 2);
+    }
+
+    const double variance = sumSquaredDiffs / (n - 1.0);
+    const double stddev = std::sqrt(variance);
+
+    return { mean, stddev };
+}
+
+std::vector<std::pair<double, double>> MonteCarloEngine::ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns)
+{
+    assert(!returns.empty());
+
+    std::vector<std::pair<double, double>> statistics;
+
+    for(const std::vector<double>& assetReturns : returns)
+    {
+        std::pair<double, double> assetStats = ComputeAssetStatistics(assetReturns);
+        statistics.emplace_back(std::move(assetStats));
+    }
+
+    return statistics;
+}
+
+std::vector<double> MonteCarloEngine::CombineAssetReturns(const Portfolio& portfolio)
 {
     const std::vector<double>& weights = portfolio.GetWeights();
     const std::vector<std::string>& tickers = portfolio.GetTickers();
-    
+    std::vector<std::vector<double>> returns = DataHandler::GetLogReturnsMat(tickers);
+
     assert(weights.size() == tickers.size());
     assert(!returns.empty() && returns[0].size() == tickers.size());
 
     std::vector<double> portfolioReturns;
     portfolioReturns.reserve(returns.size());
 
-    for(std::size_t day = 0; day < returns.size(); ++day)
+    for (std::size_t day = 0; day < returns.size(); ++day)
     {
         double portfolioReturn = 0.0;
-        for(std::size_t asset = 0; asset < returns[day].size(); ++asset)
+        for (std::size_t asset = 0; asset < returns[day].size(); ++asset)
         {
             portfolioReturn += weights[asset] * returns[day][asset];
         }
         portfolioReturns.push_back(portfolioReturn);
     }
 
-    double totalRet = std::accumulate(portfolioReturns.begin(), portfolioReturns.end(), 0.0);
-    double meanRet = totalRet / portfolioReturns.size();
-
-    double sumSquaredDiffs = 0.0;
-    for(double ret : portfolioReturns)
-    {
-        sumSquaredDiffs += std::pow(ret - meanRet, 2);
-    }
-    
-    double variance = sumSquaredDiffs / (portfolioReturns.size() - 1);
-    double stddev = std::sqrt(variance);
-
-    return std::make_pair(meanRet, stddev);
+    return portfolioReturns;
 }

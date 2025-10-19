@@ -9,6 +9,7 @@
 
 #include "Globals.hpp"
 #include "MonteCarloEngine.hpp"
+#include "PortfolioOptimisation.hpp"
 
 struct StockData 
 {
@@ -210,20 +211,41 @@ static std::vector<std::vector<double>> GetLogReturnsMat(const std::vector<std::
         {
             auto prevItr = std::prev(itr);
             
-            // Check for non-positive prices
             if(prevItr->second <= 0.0 || itr->second <= 0.0)
             {
                 logReturnsMat[row][col] = std::numeric_limits<double>::quiet_NaN();
                 continue;
             }
             
-            // Correct log return: log(P_t / P_{t-1})
             double logReturn = std::log(itr->second / prevItr->second);
             logReturnsMat[row][col] = logReturn;
         }
     }
 
     return logReturnsMat;
+}
+
+static void WriteEfficientFrontierToCSV(const PortfolioOptimisation::EfficientFrontier& frontier, const std::string& filename) 
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Error opening file: " << filename << '\n';
+        return;
+    }
+    
+    file << "Return,Volatility,SharpeRatio\n";
+    
+    for (size_t i = 0; i < frontier.returns.size(); ++i)
+    {
+        double sharpe = frontier.returns[i] / frontier.volatilities[i];
+        file << frontier.returns[i] << "," 
+            << frontier.volatilities[i] << ","
+            << sharpe << "\n";
+    }
+    
+    file.close();
+    std::cout << "Efficient frontier written to: " << filename << '\n';
 }
 
 };

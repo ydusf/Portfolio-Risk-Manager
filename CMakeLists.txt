@@ -2,33 +2,26 @@ cmake_minimum_required(VERSION 3.20)
 
 project(PortfolioRiskManager VERSION 1.0.0 LANGUAGES CXX)
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Include directories
 set(PROJECT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 
-# Automatically find all .cpp files in src directory
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
-# Create main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_INCLUDE_DIR})
 
-# Compiler warnings
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)
 endif()
 
-# Aggressive Release optimizations
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
     $<$<CONFIG:Release>:
-        # Core optimizations (supported by both GCC and Clang)
         -O3
         -march=native
         -flto
@@ -39,7 +32,6 @@ target_compile_options(${PROJECT_NAME} PRIVATE
         -fdata-sections
         -ffunction-sections
         
-        # GCC-specific optimizations
         $<$<CXX_COMPILER_ID:GNU>:
             -mtune=native
             -fprefetch-loop-arrays
@@ -63,7 +55,6 @@ target_compile_options(${PROJECT_NAME} PRIVATE
             -fweb
         >
         
-        # Clang-specific optimizations
         $<$<CXX_COMPILER_ID:Clang>:
             -fvectorize
             -fslp-vectorize
@@ -72,11 +63,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     >
 )
 
-# Link-time optimizations for Release
 target_link_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:
         -flto
-        # Platform-specific linker optimizations
         $<$<PLATFORM_ID:Linux>:
             -Wl,--gc-sections
             -Wl,-O3
@@ -90,7 +79,6 @@ target_link_options(${PROJECT_NAME} PRIVATE
     >
 )
 
-# Preprocessor definitions for Release
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
     $<$<CONFIG:Release>:
@@ -99,22 +87,15 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     >
 )
 
-# Profile-Guided Optimization support (optional)
 option(USE_PGO "Enable Profile-Guided Optimization" OFF)
 if(USE_PGO AND CMAKE_BUILD_TYPE STREQUAL "Release")
-    # First pass: generate profile data
     target_compile_options(${PROJECT_NAME} PRIVATE -fprofile-generate)
     target_link_options(${PROJECT_NAME} PRIVATE -fprofile-generate)
-    
-    # Second pass would use: -fprofile-use
-    # This requires a two-stage build process
 endif()
 
-# Enable testing
 enable_testing()
 include(FetchContent)
 
-# GoogleTest
 FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -123,31 +104,49 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# Find all test files
+FetchContent_Declare(
+    eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3.4.0
+)
+FetchContent_MakeAvailable(eigen)
+
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE Eigen3::Eigen ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+
 file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
 
 if(TEST_SOURCES)
+    add_library(portfolio STATIC ${SOURCES})
+    target_include_directories(portfolio PUBLIC ${PROJECT_INCLUDE_DIR})
+    target_link_libraries(portfolio PUBLIC Eigen3::Eigen)
+    target_compile_definitions(portfolio PUBLIC PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
+
     add_executable(tests ${TEST_SOURCES})
     target_include_directories(tests PRIVATE ${PROJECT_INCLUDE_DIR})
     target_compile_features(tests PRIVATE cxx_std_23)
-    target_link_libraries(tests PRIVATE GTest::gmock_main)
+    
+    target_link_libraries(tests PRIVATE
+        GTest::gmock_main
+        portfolio
+    )
 
-    # Compiler flags for tests (less aggressive optimization for debugging)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(tests PRIVATE -Wall -Wextra -Wpedantic -O2)
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         target_compile_options(tests PRIVATE /W4 /O2)
     endif()
 
-    # Discover tests
     include(GoogleTest)
     gtest_discover_tests(tests)
 endif()
 
-# Additional build configurations
+
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel" CACHE STRING "" FORCE)
 
-# MinSizeRel optimizations (for size-constrained environments)
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:MinSizeRel>:-Os -march=native -flto -fdata-sections -ffunction-sections>
 )
@@ -159,12 +158,10 @@ target_link_options(${PROJECT_NAME} PRIVATE
     >
 )
 
-# RelWithDebInfo optimizations (optimized but with debug symbols)
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:RelWithDebInfo>:-O2 -g -march=native -fno-omit-frame-pointer>
 )
 
-# Summary
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
@@ -174,7 +171,6 @@ if(TEST_SOURCES)
     message(STATUS "Test files found: ${TEST_SOURCES}")
 endif()
 
-# Performance hints
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "")
     message(STATUS "=== PERFORMANCE OPTIMIZATIONS ENABLED ===")
