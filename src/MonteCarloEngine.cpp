@@ -8,6 +8,7 @@
 
 #include "../include/MonteCarloEngine.hpp"
 #include "../include/DataHandler.hpp"
+#include "../include/PortfolioOptimisation.hpp"
 
 /* -------------------------- PUBLIC METHODS ------------------------------ */
 
@@ -17,7 +18,76 @@ MonteCarloEngine::MonteCarloEngine()
 MonteCarloEngine::~MonteCarloEngine()
 {}
 
-Returns MonteCarloEngine::GenerateReturns(double drift, double volatility, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
+Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
+{    
+    Returns returns;
+    returns.m_returns.resize(numPaths * numDays);
+    returns.m_blockSize = numDays;
+
+    const std::size_t numAssets = assetStatistics.size();
+    assert(choleskyMatrix.rows() == numAssets && choleskyMatrix.cols() == numAssets);
+
+    constexpr double dt = 1.0 / 252.0;
+    
+    std::vector<double> dailyDrifts(numAssets);
+    std::vector<double> dailyVolatilities(numAssets);
+    
+    for(std::size_t i = 0; i < numAssets; ++i)
+    {
+        dailyDrifts[i] = assetStatistics[i].first * dt;
+        dailyVolatilities[i] = assetStatistics[i].second * std::sqrt(dt);
+    }
+
+    std::vector<std::thread> threads;
+    threads.reserve(m_NUM_THREADS);
+
+    const std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
+
+    for(std::size_t threadIdx = 0; threadIdx < m_NUM_THREADS; ++threadIdx)
+    {
+        const std::size_t startPath = threadIdx * pathsPerThread;
+        const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx + 1) * pathsPerThread;
+
+        threads.emplace_back([&, startPath, endPath]() {
+            thread_local static GenNormalPCG rng;
+            
+            Eigen::VectorXd independentShocks(numAssets);
+            Eigen::VectorXd correlatedShocks(numAssets);
+            
+            for(std::size_t path = startPath; path < endPath; ++path)
+            {                
+                std::size_t baseIdx = path * numDays;
+                for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
+                {
+                    for(std::size_t i = 0; i < numAssets; ++i)
+                    {
+                        independentShocks(i) = rng();
+                    }                  
+
+                    correlatedShocks = choleskyMatrix * independentShocks;
+                    
+                    double totalDailyReturns = 0.0;
+                    for(std::size_t i = 0; i < numAssets; ++i)
+                    {
+                        totalDailyReturns += dailyDrifts[i] + dailyVolatilities[i] * correlatedShocks(i);
+                    }
+                    
+                    std::size_t flatIdx = baseIdx + dayIdx;
+                    returns.m_returns[flatIdx] = totalDailyReturns;
+                }
+            }
+        });
+    }
+
+    for(std::thread& th : threads)
+    {
+        th.join();
+    }
+
+    return returns;
+}
+
+Returns MonteCarloEngine::GenerateReturnsForSingleAsset(double drift, double volatility, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
 {
     Returns returns;
     returns.m_returns.resize(numPaths * numDays);
@@ -42,9 +112,10 @@ Returns MonteCarloEngine::GenerateReturns(double drift, double volatility, std::
             for(std::size_t path = startPath; path < endPath; ++path)
             {                
                 std::size_t baseIdx = path * numDays;
-                for(std::size_t day = baseIdx; day < baseIdx + numDays; ++day)
+                for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
                 {
-                    returns.m_returns[day] = dailyDrift + dailyVolatility * rng();
+                    const std::size_t flatIdx = baseIdx + dayIdx;
+                    returns.m_returns[flatIdx] = dailyDrift + dailyVolatility * rng();
                 }
             }
         });
@@ -83,18 +154,23 @@ Returns MonteCarloEngine::BuildPricePaths(const Returns& returns, double initial
     return prices;
 }
 
-std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::vector<double>& assetReturns)
+std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::size_t assetIdx, const std::vector<std::vector<double>>& assetReturns)
 {
     assert(!assetReturns.empty());
 
     const double n = static_cast<double>(assetReturns.size());
-    const double mean = std::accumulate(assetReturns.begin(), assetReturns.end(), 0.0) / n;
+
+    double sum = 0.0;
+    for (const std::vector<double>& tReturns : assetReturns)
+    {
+        sum += tReturns[assetIdx];
+    }
+    const double mean = sum / n;
 
     double sumSquaredDiffs = 0.0;
-
-    for (double r : assetReturns)
+    for (const std::vector<double>& tReturns : assetReturns)
     {
-        sumSquaredDiffs += std::pow(r - mean, 2);
+        sumSquaredDiffs += std::pow(tReturns[assetIdx] - mean, 2);
     }
 
     const double variance = sumSquaredDiffs / (n - 1.0);
@@ -105,14 +181,18 @@ std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::ve
 
 std::vector<std::pair<double, double>> MonteCarloEngine::ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns)
 {
-    assert(!returns.empty());
+    const std::size_t numDays = returns.size();
+    assert(numDays > 0);
+
+    const std::size_t numAssets = returns[0].size();
+    assert(numAssets > 0);
 
     std::vector<std::pair<double, double>> statistics;
 
-    for(const std::vector<double>& assetReturns : returns)
+    for(std::size_t asset = 0; asset < numAssets; ++asset)
     {
-        std::pair<double, double> assetStats = ComputeAssetStatistics(assetReturns);
-        statistics.emplace_back(std::move(assetStats));
+        std::pair<double, double> assetStats = ComputeAssetStatistics(asset, returns);
+        statistics.emplace_back(assetStats);
     }
 
     return statistics;

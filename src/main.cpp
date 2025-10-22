@@ -15,7 +15,7 @@
 #include "../include/PortfolioOptimisation.hpp"
 
 // EXAMPLE USAGE:
-// ./run.sh NVDA=0.15 GOOGL=0.1 AGYS=0.08 AMZN=0.03 MU=0.06 MSFT=0.03 NU=0.04 LLY=0.085 UNH=0.2 NVO=0.225
+// ./run.sh NVDA=0.15 GOOGL=0.1 AGYS=0.08 AMZN=0.03 MU=0.06 MSFT=0.03 NU=0.04 LLY=0.085 UNH=0.2 NVO=0.225 2024-11-12 2025-10-18 
 
 int main(int argc, char* argv[]) 
 {
@@ -105,8 +105,10 @@ int main(int argc, char* argv[])
     std::cout << "  Conditional VaR:     " << CVaR * 100 << "%" << '\n';
     std::cout << "  Sharpe Ratio:        " << sharpe << "" << '\n';
     
-    const std::vector<std::vector<double>> covMatrix = PortfolioOptimisation::CalculateCovarianceMatrix(tickers);
-    const std::vector<double> expectedReturns = PortfolioOptimisation::CalculateExpectedLogReturns(tickers, true);
+    const std::vector<std::vector<double>> portfolioReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
+
+    const std::vector<std::vector<double>> covMatrix = PortfolioOptimisation::CalculateCovarianceMatrix(portfolioReturns);
+    const std::vector<double> expectedReturns = PortfolioOptimisation::CalculateExpectedAssetReturns(tickers, true);
     
     std::cout << "\nExpected Annual Returns:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i)
@@ -160,20 +162,35 @@ int main(int argc, char* argv[])
         DataHandler::WriteEfficientFrontierToCSV(frontier, "../data/efficient_frontier.csv");
     }
 
-    MonteCarloEngine mce;
-    const std::vector<std::vector<double>> portfolioReturns = DataHandler::GetLogReturnsMat(portfolio.GetTickers());
-    const std::vector<double> combinedPortfolioReturns = mce.CombineAssetReturns(portfolio);
-    auto [portfolioMean, portfolioStd] = mce.ComputeAssetStatistics(combinedPortfolioReturns);
+    // MonteCarloEngine mce;
+    // const std::vector<double> combinedPortfolioReturns = mce.CombineAssetReturns(portfolio);
+    // auto [portfolioMean, portfolioStd] = mce.ComputeAssetStatistics(combinedPortfolioReturns);
 
-    constexpr int NUM_SIMS = 1'000'000;
+    // constexpr int NUM_SIMS = 200;
+    // auto start = std::chrono::high_resolution_clock::now();
+    // Returns returns = mce.GenerateReturnsForSingleAsset(portfolioMean, portfolioStd, NUM_SIMS);
+    // auto end = std::chrono::high_resolution_clock::now();
+
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    // Returns pricePaths = mce.BuildPricePaths(returns, 100);
+    // DataHandler::WritePathsToCSV(pricePaths, "../data/single_asset_paths.csv");
+
+    MonteCarloEngine mce;
+
+    const std::vector<std::pair<double, double>> assetStatistics = mce.ComputeMultiAssetStatistics(portfolioReturns);
+
+    const Eigen::MatrixXd choleskyMatrix = PortfolioOptimisation::GetCholeskyMatrix(covMatrix);
+
+    constexpr int NUM_SIMS = 50;
     auto start = std::chrono::high_resolution_clock::now();
-    Returns returns = mce.GenerateReturns(portfolioMean, portfolioStd, NUM_SIMS);
+    Returns returns = mce.GenerateReturnsForMultiAsset(choleskyMatrix, assetStatistics, NUM_SIMS);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // Returns pricePaths = mce.BuildPricePaths(returns, 100);
-    // DataHandler::WritePathsToCSV(pricePaths, "../data/test_paths.csv");
+    Returns pricePaths = mce.BuildPricePaths(returns, 100);
+    DataHandler::WritePathsToCSV(pricePaths, "../data/multi_assets_paths.csv");
 
     std::cout << "\nMonte Carlo Simulation:" << '\n';
     std::cout << "  Runs: " << NUM_SIMS << "" << '\n';

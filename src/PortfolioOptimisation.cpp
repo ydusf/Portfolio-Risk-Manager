@@ -2,6 +2,7 @@
 #include <numeric>
 #include <algorithm>
 #include <stdexcept>
+
 #include <Eigen/Dense>
 
 #include "../include/PortfolioOptimisation.hpp"
@@ -13,14 +14,6 @@ namespace PortfolioOptimisation
     {
         PortfolioOptimisation::OptimisationResult result;
         const std::size_t n = covMatrix.size();
-
-        /*
-        covMatrix is in this form:
-            [ [Cov(A1,A1), Cov(A2,A1), Cov(A3,A1)],
-              [​Cov(A1,A2), Cov(A2,A2), Cov(A3,A2)],
-              [​Cov(A1,A3), Cov(A2,A3), Cov(A3,A3)]​ ]
-        where A1, A2, A3 are individual assets in a portfolio
-        */
         
         assert(n != 0 && covMatrix[0].size() == n);
         assert(expectedReturns.size() == n);
@@ -34,15 +27,15 @@ namespace PortfolioOptimisation
             }
         }
         
-        Eigen::LLT<Eigen::MatrixXd> llt(sigma);
+        const Eigen::LLT<Eigen::MatrixXd> llt(sigma);
         assert(llt.info() != Eigen::NumericalIssue);
 
-        Eigen::VectorXd ones = Eigen::VectorXd::Ones(n);
-        Eigen::VectorXd sigmaInvOnes = sigma.llt().solve(ones);
-        double denominator = ones.transpose() * sigmaInvOnes;
+        const Eigen::VectorXd ones = Eigen::VectorXd::Ones(n);
+        const Eigen::VectorXd sigmaInvOnes = sigma.llt().solve(ones);
+        const double denominator = ones.transpose() * sigmaInvOnes;
         assert(std::abs(denominator) >= 1e-10);
         
-        Eigen::VectorXd w = sigmaInvOnes / denominator;
+        const Eigen::VectorXd w = sigmaInvOnes / denominator;
         
         result.weights.resize(n);
         for (int i = 0; i < n; ++i)
@@ -50,10 +43,10 @@ namespace PortfolioOptimisation
             result.weights[i] = w(i);
         }
         
-        double sumWeights = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
+        const double sumWeights = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
         assert(std::abs(sumWeights - 1.0) <= 1e-6);
         
-        double variance = (w.transpose() * sigma * w)(0);
+        const double variance = (w.transpose() * sigma * w)(0);
         result.volatility = std::sqrt(variance);
         
         result.expectedReturn = 0.0;
@@ -87,17 +80,17 @@ namespace PortfolioOptimisation
             }
         }
         
-        Eigen::LLT<Eigen::MatrixXd> llt(sigma);
+        const Eigen::LLT<Eigen::MatrixXd> llt(sigma);
         assert(llt.info() != Eigen::NumericalIssue);
         
-        Eigen::VectorXd excessReturns = mu.array() - riskFreeRate;
+        const Eigen::VectorXd excessReturns = mu.array() - riskFreeRate;
         assert(excessReturns.norm() >= 1e-10);
         
-        Eigen::VectorXd w_unnormalized = sigma.llt().solve(excessReturns);
-        double sumWeights = w_unnormalized.sum();
+        const Eigen::VectorXd w_unnormalized = sigma.llt().solve(excessReturns);
+        const double sumWeights = w_unnormalized.sum();
         assert(std::abs(sumWeights) >= 1e-10);
         
-        Eigen::VectorXd w = w_unnormalized / sumWeights;
+        const Eigen::VectorXd w = w_unnormalized / sumWeights;
         
         result.weights.resize(n);
         for (int i = 0; i < n; ++i)
@@ -105,7 +98,7 @@ namespace PortfolioOptimisation
             result.weights[i] = w(i);
         }
         
-        double weightsSum = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
+        const double weightsSum = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
         if (std::abs(weightsSum - 1.0) > 1e-6)
         {
             for (int i = 0; i < n; ++i)
@@ -114,7 +107,7 @@ namespace PortfolioOptimisation
             }
         }
         
-        double variance = (w.transpose() * sigma * w)(0);
+        const double variance = (w.transpose() * sigma * w)(0);
         result.volatility = std::sqrt(variance);
         
         result.expectedReturn = 0.0;
@@ -163,8 +156,8 @@ namespace PortfolioOptimisation
         b(n) = targetReturn;
         b(n + 1) = 1.0;
         
-        Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
-        Eigen::VectorXd w = solution.head(n);
+        const Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
+        const Eigen::VectorXd w = solution.head(n);
         
         result.weights.resize(n);
         for (int i = 0; i < n; ++i)
@@ -172,7 +165,7 @@ namespace PortfolioOptimisation
             result.weights[i] = w(i);
         }
         
-        double variance = (w.transpose() * sigma * w)(0);
+        const double variance = (w.transpose() * sigma * w)(0);
         result.volatility = std::sqrt(variance);
         result.expectedReturn = targetReturn;
         result.sharpeRatio = result.expectedReturn / result.volatility;
@@ -185,8 +178,8 @@ namespace PortfolioOptimisation
         EfficientFrontier frontier;
         assert(numPoints > 0);
         
-        double minReturn = *std::min_element(expectedReturns.begin(), expectedReturns.end());
-        double maxReturn = *std::max_element(expectedReturns.begin(), expectedReturns.end());
+        const double minReturn = *std::min_element(expectedReturns.begin(), expectedReturns.end());
+        const double maxReturn = *std::max_element(expectedReturns.begin(), expectedReturns.end());
         
         frontier.returns.reserve(numPoints);
         frontier.volatilities.reserve(numPoints);
@@ -199,9 +192,8 @@ namespace PortfolioOptimisation
         
         for (int i = 0; i < numPoints; ++i)
         {
-            double targetReturn = minReturn + i * (maxReturn - minReturn) / (numPoints - 1);
-            
-            PortfolioOptimisation::OptimisationResult result = OptimiseForTargetReturn(covMatrix, expectedReturns, targetReturn);
+            const double targetReturn = minReturn + i * (maxReturn - minReturn) / (numPoints - 1);
+            const PortfolioOptimisation::OptimisationResult result = OptimiseForTargetReturn(covMatrix, expectedReturns, targetReturn);
             
             frontier.returns.push_back(result.expectedReturn);
             frontier.volatilities.push_back(result.volatility);
@@ -223,13 +215,33 @@ namespace PortfolioOptimisation
         return frontier;
     }
 
-    std::vector<std::vector<double>> CalculateCovarianceMatrix(const std::vector<std::string>& tickers)
+    Eigen::MatrixXd GetCholeskyMatrix(const std::vector<std::vector<double>>& covMatrix)
     {
-        std::vector<std::vector<double>> logReturnsMat = DataHandler::GetLogReturnsMat(tickers);
+        const std::size_t n = covMatrix.size();
+        
+        Eigen::MatrixXd sigma(n, n);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            for (std::size_t j = 0; j < n; ++j)
+            {
+                sigma(i, j) = covMatrix[i][j];
+            }
+        }
+        
+        Eigen::LLT<Eigen::MatrixXd> llt(sigma);
+        assert(llt.info() == Eigen::Success);
+        
+        return llt.matrixL();
+    }
+
+    std::vector<std::vector<double>> CalculateCovarianceMatrix(const std::vector<std::vector<double>>& logReturnsMat)
+    {
         assert(logReturnsMat.size() > 0);
+
+        const std::size_t numAssets = logReturnsMat[0].size();
+        assert(numAssets > 0);
                 
         const std::size_t numPeriods = logReturnsMat.size();
-        const std::size_t numAssets = tickers.size();
         
         std::vector<double> means(numAssets, 0.0);
         for (std::size_t asset = 0; asset < numAssets; ++asset) 
@@ -242,6 +254,15 @@ namespace PortfolioOptimisation
             means[asset] = sum / numPeriods;
         }
         
+        /*
+        covMatrix is in the form:
+            [ [Cov(A1,A1), Cov(A2,A1), Cov(A3,A1), ..., Cov(An, A1)],
+              [​Cov(A1,A2), Cov(A2,A2), Cov(A3,A2), ..., Cov(An, A2)],
+              [​Cov(A1,A3), Cov(A2,A3), Cov(A3,A3), ..., Cov(An, A3)],
+              ......................................................
+              [​Cov(A1,An), Cov(A2,An), Cov(A3,An), ..., Cov(An, An)]​ ]
+        where A1, A2, A3, ..., An are individual assets in a portfolio
+        */
         std::vector<std::vector<double>> covMatrix(numAssets, std::vector<double>(numAssets, 0.0));
         
         for (std::size_t i = 0; i < numAssets; ++i) 
@@ -251,8 +272,8 @@ namespace PortfolioOptimisation
                 double covariance = 0.0;
                 for (std::size_t t = 0; t < numPeriods; ++t) 
                 {
-                    double dev_i = logReturnsMat[t][i] - means[i];
-                    double dev_j = logReturnsMat[t][j] - means[j];
+                    const double dev_i = logReturnsMat[t][i] - means[i];
+                    const double dev_j = logReturnsMat[t][j] - means[j];
                     covariance += dev_i * dev_j;
                 }
                 covariance /= (numPeriods - 1);
@@ -266,7 +287,7 @@ namespace PortfolioOptimisation
         return covMatrix;
     }
 
-    std::vector<double> CalculateExpectedLogReturns(const std::vector<std::string>& tickers, bool annualise)
+    std::vector<double> CalculateExpectedAssetReturns(const std::vector<std::string>& tickers, bool annualise)
     {
         std::vector<std::vector<double>> logReturnsMat = DataHandler::GetLogReturnsMat(tickers);
         assert(logReturnsMat.size() > 0);
@@ -283,7 +304,7 @@ namespace PortfolioOptimisation
                 sum += logReturnsMat[t][asset];
             }
             
-            double meanReturn = sum / numPeriods;
+            const double meanReturn = sum / numPeriods;
             expectedReturns[asset] = annualise ? meanReturn * 252.0 : meanReturn;
         }
         

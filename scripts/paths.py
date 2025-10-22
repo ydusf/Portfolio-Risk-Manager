@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -11,10 +12,13 @@ def plot_paths_from_csv(filename):
     plt.title("Portfolio Return Paths")
     plt.xlabel("Day")
     plt.ylabel("Return")
-    plt.legend()
     plt.grid(True)
     plt.show()
 
 
-if __name__ == "__main__":  
-    plot_paths_from_csv("./paths/test_paths.csv")
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python plot_paths.py <filename>")
+    else:
+        filename = sys.argv[1]
+        plot_paths_from_csv("data/" + filename)

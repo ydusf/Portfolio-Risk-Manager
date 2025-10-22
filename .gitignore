@@ -4,3 +4,4 @@ venv
 assets
 data
 .env
+.DS_Store
