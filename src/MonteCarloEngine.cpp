@@ -18,30 +18,34 @@ MonteCarloEngine::MonteCarloEngine()
 MonteCarloEngine::~MonteCarloEngine()
 {}
 
-Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
-{    
-    Returns returns;
-    returns.m_returns.resize(numPaths * numDays);
-    returns.m_blockSize = numDays;
 
+Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths,  std::size_t numDays)
+{    
     const std::size_t numAssets = assetStatistics.size();
     assert(choleskyMatrix.rows() == numAssets && choleskyMatrix.cols() == numAssets);
 
     constexpr double dt = 1.0 / 252.0;
     
-    std::vector<double> dailyDrifts(numAssets);
-    std::vector<double> dailyVolatilities(numAssets);
+    Eigen::VectorXd dailyDrifts(numAssets);
+    Eigen::VectorXd dailyVolatilities(numAssets);
     
     for(std::size_t i = 0; i < numAssets; ++i)
     {
-        dailyDrifts[i] = assetStatistics[i].first * dt;
-        dailyVolatilities[i] = assetStatistics[i].second * std::sqrt(dt);
+        dailyDrifts(i) = assetStatistics[i].first * dt;
+        dailyVolatilities(i) = assetStatistics[i].second * std::sqrt(dt);
     }
+    
+    const double driftSum = dailyDrifts.sum();
+    
+    Returns returns;
+    returns.m_returns.resize(numPaths * numDays);
+    returns.m_blockSize = numDays;
 
     std::vector<std::thread> threads;
     threads.reserve(m_NUM_THREADS);
 
     const std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
+    constexpr std::size_t BATCH_SIZE = 1000;
 
     for(std::size_t threadIdx = 0; threadIdx < m_NUM_THREADS; ++threadIdx)
     {
@@ -51,29 +55,35 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& ch
         threads.emplace_back([&, startPath, endPath]() {
             thread_local static GenNormalPCG rng;
             
-            Eigen::VectorXd independentShocks(numAssets);
-            Eigen::VectorXd correlatedShocks(numAssets);
+            Eigen::MatrixXd independentShocks(numAssets, numDays * BATCH_SIZE);
+            Eigen::MatrixXd correlatedShocks(numAssets, numDays * BATCH_SIZE);
             
-            for(std::size_t path = startPath; path < endPath; ++path)
-            {                
-                std::size_t baseIdx = path * numDays;
-                for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
+            for(std::size_t batchStart = startPath; batchStart < endPath; batchStart += BATCH_SIZE)
+            {
+                const std::size_t batchEnd = std::min(batchStart + BATCH_SIZE, endPath);
+                const std::size_t currentBatchSize = batchEnd - batchStart;
+                const std::size_t totalSteps = numDays * currentBatchSize;
+                
+                double* shockData = independentShocks.data();
+                for(std::size_t i = 0; i < numAssets * totalSteps; ++i)
                 {
-                    for(std::size_t i = 0; i < numAssets; ++i)
-                    {
-                        independentShocks(i) = rng();
-                    }                  
-
-                    correlatedShocks = choleskyMatrix * independentShocks;
+                    shockData[i] = rng();
+                }
+                
+                correlatedShocks.leftCols(totalSteps) = choleskyMatrix * independentShocks.leftCols(totalSteps);
+                
+                for(std::size_t pathIdx = 0; pathIdx < currentBatchSize; ++pathIdx)
+                {
+                    const std::size_t path = batchStart + pathIdx;
+                    const std::size_t baseIdx = path * numDays;
+                    const std::size_t columnOffset = pathIdx * numDays;
                     
-                    double totalDailyReturns = 0.0;
-                    for(std::size_t i = 0; i < numAssets; ++i)
+                    for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
                     {
-                        totalDailyReturns += dailyDrifts[i] + dailyVolatilities[i] * correlatedShocks(i);
+                        const std::size_t colIdx = columnOffset + dayIdx;
+                        double totalDailyReturns = driftSum + dailyVolatilities.dot(correlatedShocks.col(colIdx));
+                        returns.m_returns[baseIdx + dayIdx] = totalDailyReturns;
                     }
-                    
-                    std::size_t flatIdx = baseIdx + dayIdx;
-                    returns.m_returns[flatIdx] = totalDailyReturns;
                 }
             }
         });

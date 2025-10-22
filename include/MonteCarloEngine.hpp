@@ -8,6 +8,7 @@
 #include "Portfolio.hpp"
 #include "RandomGenerator.hpp"
 
+
 struct Returns
 {
     std::vector<double> m_returns;
