@@ -27,8 +27,9 @@ namespace PortfolioOptimisation
     OptimisationResult OptimiseForTargetReturn(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double targetReturn);
     EfficientFrontier ComputeEfficientFrontier(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, int numPoints);
     
-    std::vector<std::vector<double>> CalculateCovarianceMatrix(const std::vector<std::string>& tickers);
-    std::vector<double> CalculateExpectedLogReturns(const std::vector<std::string>& tickers, bool annualise);
+    Eigen::MatrixXd GetCholeskyMatrix(const std::vector<std::vector<double>>& covMatrix);
+    std::vector<std::vector<double>> CalculateCovarianceMatrix(const std::vector<std::vector<double>>& logReturnsMat);
+    std::vector<double> CalculateExpectedAssetReturns(const std::vector<std::string>& tickers, bool annualise);
     double CalculatePortfolioVariance(const std::vector<double>& weights, const std::vector<std::vector<double>>& covMatrix);
     double CalculatePortfolioReturn(const std::vector<double>& weights, const std::vector<double>& expectedReturns);
 };
