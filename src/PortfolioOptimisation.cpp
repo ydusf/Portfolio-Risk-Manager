@@ -10,7 +10,7 @@
 
 namespace PortfolioOptimisation
 {
-    PortfolioOptimisation::OptimisationResult MinimiseVolatility(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns)
+    PortfolioOptimisation::OptimisationResult MinimiseVolatility(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, bool allowNegativeWeights)
     {
         PortfolioOptimisation::OptimisationResult result;
         const std::size_t n = covMatrix.size();
@@ -19,9 +19,9 @@ namespace PortfolioOptimisation
         assert(expectedReturns.size() == n);
         
         Eigen::MatrixXd sigma(n, n);
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
-            for (int j = 0; j < n; ++j)
+            for (std::size_t j = 0; j < n; ++j)
             {
                 sigma(i, j) = covMatrix[i][j];
             }
@@ -38,9 +38,9 @@ namespace PortfolioOptimisation
         const Eigen::VectorXd w = sigmaInvOnes / denominator;
         
         result.weights.resize(n);
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
-            result.weights[i] = w(i);
+            result.weights[i] = allowNegativeWeights ? w(i) : std::max(0.0, w(i));
         }
         
         const double sumWeights = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
@@ -50,7 +50,7 @@ namespace PortfolioOptimisation
         result.volatility = std::sqrt(variance);
         
         result.expectedReturn = 0.0;
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
             result.expectedReturn += result.weights[i] * expectedReturns[i];
         }
@@ -60,7 +60,7 @@ namespace PortfolioOptimisation
         return result;
     }
 
-    PortfolioOptimisation::OptimisationResult MaximiseSharpeRatio(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double riskFreeRate)
+    PortfolioOptimisation::OptimisationResult MaximiseSharpeRatio(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, bool allowNegativeWeights, double riskFreeRate)
     {
         PortfolioOptimisation::OptimisationResult result;
         const std::size_t n = covMatrix.size();
@@ -71,10 +71,10 @@ namespace PortfolioOptimisation
         Eigen::MatrixXd sigma(n, n);
         Eigen::VectorXd mu(n);
         
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
             mu(i) = expectedReturns[i];
-            for (int j = 0; j < n; ++j)
+            for (std::size_t j = 0; j < n; ++j)
             {
                 sigma(i, j) = covMatrix[i][j];
             }
@@ -93,15 +93,15 @@ namespace PortfolioOptimisation
         const Eigen::VectorXd w = w_unnormalized / sumWeights;
         
         result.weights.resize(n);
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
-            result.weights[i] = w(i);
+            result.weights[i] = allowNegativeWeights ? w(i) : std::max(0.0, w(i));
         }
         
         const double weightsSum = std::accumulate(result.weights.begin(), result.weights.end(), 0.0);
         if (std::abs(weightsSum - 1.0) > 1e-6)
         {
-            for (int i = 0; i < n; ++i)
+            for (std::size_t i = 0; i < n; ++i)
             {
                 result.weights[i] /= weightsSum;
             }
@@ -111,7 +111,7 @@ namespace PortfolioOptimisation
         result.volatility = std::sqrt(variance);
         
         result.expectedReturn = 0.0;
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
             result.expectedReturn += result.weights[i] * expectedReturns[i];
         }
@@ -121,7 +121,7 @@ namespace PortfolioOptimisation
         return result;
     }
 
-    PortfolioOptimisation::OptimisationResult OptimiseForTargetReturn(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double targetReturn)
+    PortfolioOptimisation::OptimisationResult OptimiseForTargetReturn(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double targetReturn, bool allowNegativeWeights)
     {
         PortfolioOptimisation::OptimisationResult result;
         const std::size_t n = covMatrix.size();
@@ -131,10 +131,10 @@ namespace PortfolioOptimisation
         Eigen::MatrixXd sigma(n, n);
         Eigen::VectorXd mu(n);
         
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
             mu(i) = expectedReturns[i];
-            for (int j = 0; j < n; ++j)
+            for (std::size_t j = 0; j < n; ++j)
             {
                 sigma(i, j) = covMatrix[i][j];
             }
@@ -160,9 +160,9 @@ namespace PortfolioOptimisation
         const Eigen::VectorXd w = solution.head(n);
         
         result.weights.resize(n);
-        for (int i = 0; i < n; ++i)
+        for (std::size_t i = 0; i < n; ++i)
         {
-            result.weights[i] = w(i);
+            result.weights[i] = allowNegativeWeights ? w(i) : std::max(0.0, w(i));
         }
         
         const double variance = (w.transpose() * sigma * w)(0);
@@ -190,10 +190,10 @@ namespace PortfolioOptimisation
         frontier.maxSharpeIndex = -1;
         frontier.minVolIndex = -1;
         
-        for (int i = 0; i < numPoints; ++i)
+        for (std::size_t i = 0; i < numPoints; ++i)
         {
             const double targetReturn = minReturn + i * (maxReturn - minReturn) / (numPoints - 1);
-            const PortfolioOptimisation::OptimisationResult result = OptimiseForTargetReturn(covMatrix, expectedReturns, targetReturn);
+            const PortfolioOptimisation::OptimisationResult result = OptimiseForTargetReturn(covMatrix, expectedReturns, targetReturn, true);
             
             frontier.returns.push_back(result.expectedReturn);
             frontier.volatilities.push_back(result.volatility);

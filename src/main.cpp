@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
         std::cout << "  " << tickers[i] << ": " << std::setprecision(2) << expectedReturns[i] * 100 << "%" << '\n';
     }
     
-    const PortfolioOptimisation::OptimisationResult minVolPortfolio = PortfolioOptimisation::MinimiseVolatility(covMatrix, expectedReturns);
+    const PortfolioOptimisation::OptimisationResult minVolPortfolio = PortfolioOptimisation::MinimiseVolatility(covMatrix, expectedReturns, false);
     
     std::cout << "\nMinimum Volatility Portfolio:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i)
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
     std::cout << "  Sharpe Ratio: " << minVolPortfolio.sharpeRatio << '\n';
 
     constexpr double riskFreeRate = 0;
-    const PortfolioOptimisation::OptimisationResult maxSharpePortfolio = PortfolioOptimisation::MaximiseSharpeRatio(covMatrix, expectedReturns, riskFreeRate);
+    const PortfolioOptimisation::OptimisationResult maxSharpePortfolio = PortfolioOptimisation::MaximiseSharpeRatio(covMatrix, expectedReturns, false, riskFreeRate);
     
     std::cout << "\nMaximum Sharpe Ratio Portfolio:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i)
@@ -182,9 +182,10 @@ int main(int argc, char* argv[])
 
     const Eigen::MatrixXd choleskyMatrix = PortfolioOptimisation::GetCholeskyMatrix(covMatrix);
 
-    constexpr int NUM_SIMS = 1'000'000;
+    constexpr std::size_t NUM_SIMS = 1'000'000;
+    constexpr std::size_t NUM_DAYS = 252;
     auto start = std::chrono::high_resolution_clock::now();
-    Returns returns = mce.GenerateReturnsForMultiAsset(choleskyMatrix, assetStatistics, NUM_SIMS);
+    Returns returns = mce.GenerateReturnsForMultiAsset(choleskyMatrix, assetStatistics, NUM_SIMS, NUM_DAYS);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -193,6 +194,8 @@ int main(int argc, char* argv[])
     // DataHandler::WritePathsToCSV(pricePaths, "../data/multi_assets_paths.csv");
 
     std::cout << "\nMonte Carlo Simulation:" << '\n';
-    std::cout << "  Runs: " << NUM_SIMS << "" << '\n';
+    std::cout << "  Simulated paths: " << NUM_SIMS << "" << '\n';
+    std::cout << "  Days per path: " << NUM_DAYS << "" << '\n';
+    std::cout << "  Number of assets: " << tickers.size() << "" << '\n';
     std::cout << "  Time taken: " << duration << " ms" << '\n';
 }

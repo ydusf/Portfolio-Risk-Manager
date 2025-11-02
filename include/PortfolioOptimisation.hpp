@@ -22,9 +22,9 @@ namespace PortfolioOptimisation
         int minVolIndex;
     };
 
-    OptimisationResult MinimiseVolatility(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns);
-    OptimisationResult MaximiseSharpeRatio(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double riskFreeRate = 0.0);
-    OptimisationResult OptimiseForTargetReturn(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double targetReturn);
+    OptimisationResult MinimiseVolatility(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, bool allowNegativeWeights);
+    OptimisationResult MaximiseSharpeRatio(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, bool allowNegativeWeights, double riskFreeRate = 0.0);
+    OptimisationResult OptimiseForTargetReturn(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, double targetReturn, bool allowNegativeWeights);
     EfficientFrontier ComputeEfficientFrontier(const std::vector<std::vector<double>>& covMatrix, const std::vector<double>& expectedReturns, int numPoints);
     
     Eigen::MatrixXd GetCholeskyMatrix(const std::vector<std::vector<double>>& covMatrix);

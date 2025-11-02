@@ -19,16 +19,19 @@ MonteCarloEngine::~MonteCarloEngine()
 {}
 
 
-Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths,  std::size_t numDays)
+Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths,  std::size_t numDays) const
 {    
     const std::size_t numAssets = assetStatistics.size();
     assert(choleskyMatrix.rows() == numAssets && choleskyMatrix.cols() == numAssets);
-
-    constexpr double dt = 1.0 / 252.0;
     
+    Returns returns;
+    returns.m_returns.resize(numPaths * numDays);
+    returns.m_blockSize = numDays;
+
     Eigen::VectorXd dailyDrifts(numAssets);
     Eigen::VectorXd dailyVolatilities(numAssets);
-    
+
+    const double dt = 1.0 / static_cast<double>(numDays);
     for(std::size_t i = 0; i < numAssets; ++i)
     {
         dailyDrifts(i) = assetStatistics[i].first * dt;
@@ -36,21 +39,17 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& ch
     }
     
     const double driftSum = dailyDrifts.sum();
-    
-    Returns returns;
-    returns.m_returns.resize(numPaths * numDays);
-    returns.m_blockSize = numDays;
 
     std::vector<std::thread> threads;
-    threads.reserve(m_NUM_THREADS);
+    threads.reserve(NUM_THREADS);
 
-    const std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
-    constexpr std::size_t BATCH_SIZE = 1000;
+    const std::size_t pathsPerThread = numPaths / NUM_THREADS;
+    constexpr std::size_t BATCH_SIZE = 100;
 
-    for(std::size_t threadIdx = 0; threadIdx < m_NUM_THREADS; ++threadIdx)
+    for(std::size_t threadIdx = 0; threadIdx < NUM_THREADS; ++threadIdx)
     {
         const std::size_t startPath = threadIdx * pathsPerThread;
-        const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx + 1) * pathsPerThread;
+        const std::size_t endPath = (threadIdx == NUM_THREADS - 1) ? numPaths : (threadIdx + 1) * pathsPerThread;
 
         threads.emplace_back([&, startPath, endPath]() {
             thread_local static GenNormalPCG rng;
@@ -97,25 +96,25 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& ch
     return returns;
 }
 
-Returns MonteCarloEngine::GenerateReturnsForSingleAsset(double drift, double volatility, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/)
+Returns MonteCarloEngine::GenerateReturnsForSingleAsset(double drift, double volatility, std::size_t numPaths/*1000000*/,  std::size_t numDays/*252*/) const
 {
     Returns returns;
     returns.m_returns.resize(numPaths * numDays);
     returns.m_blockSize = numDays;
 
-    constexpr double dt = 1.0 / 252.0;
+    const double dt = 1.0 / static_cast<double>(numDays);
     const double dailyVolatility = volatility * std::sqrt(dt);
     const double dailyDrift = drift * dt;
 
     std::vector<std::thread> threads;
-    threads.reserve(m_NUM_THREADS);
+    threads.reserve(NUM_THREADS);
 
-    const std::size_t pathsPerThread = numPaths / m_NUM_THREADS;
+    const std::size_t pathsPerThread = numPaths / NUM_THREADS;
 
-    for(std::size_t threadIdx = 0; threadIdx < m_NUM_THREADS; ++threadIdx)
+    for(std::size_t threadIdx = 0; threadIdx < NUM_THREADS; ++threadIdx)
     {
         const std::size_t startPath = threadIdx * pathsPerThread;
-        const std::size_t endPath = (threadIdx == m_NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
+        const std::size_t endPath = (threadIdx == NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
 
         threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
             thread_local static GenNormalPCG rng;
