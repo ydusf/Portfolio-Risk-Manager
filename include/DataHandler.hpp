@@ -23,6 +23,120 @@ struct StockData
 namespace DataHandler
 {
 
+static std::pair<std::vector<std::string>, std::vector<double>> ParseAssetData(const std::string& filename)
+{
+    const std::string csv = Paths::DATA_DIR + filename + ".csv";
+    std::ifstream file(csv);
+
+    if(!file.is_open())
+    {
+        throw std::runtime_error("Could not open file: " + csv);
+    }
+
+    std::string line;
+    {
+        if (!std::getline(file, line)) 
+        {
+            return {};
+        }
+    }
+
+    std::pair<std::vector<std::string>, std::vector<double>> assetData;
+    while (std::getline(file, line)) 
+    {
+        if (line.empty()) 
+            continue;
+
+        std::istringstream ss(line);
+        std::string ticker;
+        std::string proportionStr;
+
+        if (std::getline(ss, ticker, ',') && std::getline(ss, proportionStr)) 
+        {
+            double proportion = std::stod(proportionStr);
+            assetData.first.push_back(ticker);
+            assetData.second.push_back(proportion);
+        }
+    }
+
+    return assetData;
+}
+
+static std::pair<std::vector<std::string>, std::vector<double>> ParseAssetDataOutOfArguments(int argc, char* argv[])
+{
+    if (argc < 2) 
+    {
+        // assume user wanted to use their own portfolio from trading212
+        return DataHandler::ParseAssetData("current_portfolio");
+
+        // std::cerr << "Usage: " << argv[0] << " TICKER=WEIGHT [...]" << '\n';
+        //return {};
+    }
+
+    std::pair<std::vector<std::string>, std::vector<double>> assetData;
+
+    for (std::size_t i = 1; i < argc-2; ++i) 
+    {
+        std::string arg = argv[i];
+        std::size_t eqPos = arg.find('=');
+        if (eqPos == std::string::npos) 
+        {
+            std::cerr << "Invalid argument: " << arg << " (expected TICKER=WEIGHT)" << '\n';
+            return {};
+        }
+
+        std::string ticker = arg.substr(0, eqPos);
+        std::string weightStr = arg.substr(eqPos + 1);
+
+        try 
+        {
+            double weight = std::stod(weightStr);
+            if (weight <= 0.0) 
+            {   
+                std::cerr << "Weight for " << ticker << " must be positive." << '\n';
+            }
+            assetData.first.push_back(ticker);
+            assetData.second.push_back(weight);
+        } 
+        catch (const std::exception&) 
+        {
+            std::cerr << "Invalid weight for " << ticker << ": " << weightStr << '\n';
+            return {};
+        }
+    }
+
+    if (assetData.first.size() != assetData.second.size()) 
+    {
+        std::cerr << "Error: mismatch between tickers and weights." << '\n';
+        return {};
+    }
+
+    double totalWeight = 0.0;
+    for (double w : assetData.second) 
+    {
+        totalWeight += w;
+    }
+
+    if (totalWeight <= 0.0) 
+    {
+        std::cerr << "Error: total portfolio weight must be > 0." << '\n';
+        return {};
+    }
+
+    for (double& w : assetData.second) 
+    {
+        w /= totalWeight;
+    }
+
+    std::cout << "Parsed tickers and normalised weights:" << '\n';
+    for (std::size_t i = 0; i < assetData.first.size(); ++i) 
+    {
+        std::cout << "  " << assetData.first[i] << "  ->  " << std::fixed << std::setprecision(3) << assetData.second[i] * 100 << "%" << '\n';
+    }
+
+    return assetData;
+}
+
 static void WritePathsToCSV(const Returns& returns, const std::string& filename) 
 {
     std::ofstream file(filename);
@@ -83,14 +197,15 @@ static StockData ParseStockData(const std::string& ticker)
         {
             if (key == "Ticker") 
             {
-                if(ticker == value)
-                {
-                    data.m_ticker = value;
-                }
-                else
-                {
-                    throw std::runtime_error("Ticker in CSV does not match provided ticker");
-                }
+                data.m_ticker = value;
+                // if(ticker == value)
+                // {
+                //     data.m_ticker = value;
+                // }
+                // else
+                // {
+                //     throw std::runtime_error("Ticker in CSV does not match provided ticker");
+                // }
                 
             } 
             else 

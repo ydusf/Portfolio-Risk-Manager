@@ -19,76 +19,11 @@
 
 int main(int argc, char* argv[]) 
 {
-    if (argc < 2) 
-    {
-        std::cerr << "Usage: " << argv[0] << " TICKER=WEIGHT [...]" << '\n';
-        return 1;
-    }
+    std::pair<std::vector<std::string>, std::vector<double>> assetData = DataHandler::ParseAssetDataOutOfArguments(argc, argv);
+    const std::vector<std::string>& tickers = assetData.first;
+    const std::vector<double>& weights = assetData.second;
 
-    std::vector<std::string> tickers;
-    std::vector<double> weights;
-
-    for (std::size_t i = 1; i < argc-2; ++i) 
-    {
-        std::string arg = argv[i];
-        std::size_t eqPos = arg.find('=');
-        if (eqPos == std::string::npos) 
-        {
-            std::cerr << "Invalid argument: " << arg << " (expected TICKER=WEIGHT)" << '\n';
-            return 1;
-        }
-
-        std::string ticker = arg.substr(0, eqPos);
-        std::string weightStr = arg.substr(eqPos + 1);
-
-        try 
-        {
-            double weight = std::stod(weightStr);
-            if (weight <= 0.0) 
-            {   
-                std::cerr << "Weight for " << ticker << " must be positive." << '\n';
-                return 1;
-            }
-            tickers.push_back(ticker);
-            weights.push_back(weight);
-        } 
-        catch (const std::exception&) 
-        {
-            std::cerr << "Invalid weight for " << ticker << ": " << weightStr << '\n';
-            return 1;
-        }
-    }
-
-    if (tickers.size() != weights.size()) 
-    {
-        std::cerr << "Error: mismatch between tickers and weights." << '\n';
-        return 1;
-    }
-
-    double totalWeight = 0.0;
-    for (double w : weights) 
-    {
-        totalWeight += w;
-    }
-
-    if (totalWeight <= 0.0) 
-    {
-        std::cerr << "Error: total portfolio weight must be > 0." << '\n';
-        return 1;
-    }
-
-    for (double& w : weights) 
-    {
-        w /= totalWeight;
-    }
-
-    std::cout << "Parsed tickers and normalised weights:" << '\n';
-    for (std::size_t i = 0; i < tickers.size(); ++i) 
-    {
-        std::cout << "  " << tickers[i] << "  ->  " << std::fixed << std::setprecision(3) << weights[i] * 100 << "%" << '\n';
-    }
-
-    Portfolio portfolio(tickers, weights);
+    Portfolio portfolio(assetData.first, assetData.second);
 
     const double totalReturn = PortfolioUtils::GetMeanReturnOfSegment(portfolio, portfolio.GetReturnSeries().size());
     const double mean10R     = PortfolioUtils::GetMeanReturnOfSegment(portfolio, 10);
