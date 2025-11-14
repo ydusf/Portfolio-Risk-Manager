@@ -148,7 +148,10 @@ class Trading212Client:
     
 
 def export_portfolio_to_csv(portfolio: Portfolio, filename: str) -> bool:        
-    filepath = os.path.join("data", filename + ".csv")
+    save_to = "data"
+    os.makedirs(save_to, exist_ok=True) 
+
+    filepath = os.path.join(save_to, filename + ".csv")
     with open(filepath, 'w', newline='') as csvfile:
         fieldnames = ['isin', 'ticker', 'proportion']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
