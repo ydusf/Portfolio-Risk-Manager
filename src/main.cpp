@@ -50,8 +50,10 @@ int main(int argc, char* argv[])
     {
         std::cout << "  " << tickers[i] << ": " << std::setprecision(2) << expectedReturns[i] * 100 << "%" << '\n';
     }
+
+    const bool allowNegativeWeights = true;
     
-    const PortfolioOptimisation::OptimisationResult minVolPortfolio = PortfolioOptimisation::MinimiseVolatility(covMatrix, expectedReturns, false);
+    const PortfolioOptimisation::OptimisationResult minVolPortfolio = PortfolioOptimisation::MinimiseVolatility(covMatrix, expectedReturns, allowNegativeWeights);
     
     std::cout << "\nMinimum Volatility Portfolio:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i)
@@ -63,7 +65,7 @@ int main(int argc, char* argv[])
     std::cout << "  Sharpe Ratio: " << minVolPortfolio.sharpeRatio << '\n';
 
     constexpr double riskFreeRate = 0;
-    const PortfolioOptimisation::OptimisationResult maxSharpePortfolio = PortfolioOptimisation::MaximiseSharpeRatio(covMatrix, expectedReturns, false, riskFreeRate);
+    const PortfolioOptimisation::OptimisationResult maxSharpePortfolio = PortfolioOptimisation::MaximiseSharpeRatio(covMatrix, expectedReturns, allowNegativeWeights, riskFreeRate);
     
     std::cout << "\nMaximum Sharpe Ratio Portfolio:" << '\n';
     for (std::size_t i = 0; i < tickers.size(); ++i)
