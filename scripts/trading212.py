@@ -129,7 +129,7 @@ class Trading212Client:
             yahoo_ticker: str = get_ticker_from_isin(isin)
             if not yahoo_ticker:
                 print(f"Warning: Could not find Yahoo ticker for ISIN {isin}. Using T212 ticker as fallback.")
-                yahoo_ticker = t212_ticker
+                yahoo_ticker = t212_ticker.split("_")[0] # temporary fix for most of the existing tickers.
 
             quantity: float = asset['quantity']
             current_price: float = asset['currentPrice']
