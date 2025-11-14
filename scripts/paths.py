@@ -7,8 +7,8 @@ def plot_paths_from_csv(filename):
     
     plt.figure(figsize=(10,6))
     for i in range(len(df)):
-        plt.plot(df.iloc[i])
-    
+        plt.plot(df.iloc[i], color='blue', alpha=0.3, lw=0.5) 
+
     plt.title("Portfolio Return Paths")
     plt.xlabel("Day")
     plt.ylabel("Return")
