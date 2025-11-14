@@ -6,12 +6,41 @@ import base64
 import requests
 from requests import Response, HTTPError, JSONDecodeError
 import csv
+from typing import Optional
+import time
 
 from currency_utils import get_conversion_rate 
 
+def get_ticker_from_isin(isin: str) -> Optional[str]:
+    url = "https://query2.finance.yahoo.com/v1/finance/search"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+    params = {'q': isin, 'quotesCount': 1, 'newsCount': 0}
+
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response.raise_for_status() 
+        
+        data = response.json()
+        
+        if 'quotes' in data and data['quotes']:
+            symbol = data['quotes'][0].get('symbol')
+            return symbol
+        else:
+            print(f"Warning: No quote found for ISIN {isin}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data for {isin}: {e}")
+        return None
+    except (IndexError, KeyError, TypeError, ValueError) as e:
+        print(f"Error parsing response for {isin}: {e}")
+        return None
+
 @dataclass
 class Portfolio:
-    assets: Dict[str, float] = field(default_factory=dict)
+    assets: Dict[str, tuple[str, float]] = field(default_factory=dict)
 
 
 class Trading212Client:
@@ -50,20 +79,26 @@ class Trading212Client:
 
     def create_ticker_to_isin_map(self) -> Dict[str, str]:
         mapping: Dict[str, str] = {}
-
+        print("Fetching all instrument data to build T212Ticker-to-ISIN map...")
+        
         instruments_response = self.get(endpoint="equity/metadata/instruments")
+        
         for instrument in instruments_response:
             if 'ticker' in instrument and 'isin' in instrument:
                 mapping[instrument['ticker']] = instrument['isin']
-
+        
+        print(f"Map built with {len(mapping)} instruments.")
         return mapping
 
 
-    def retrieve_portfolio(self) -> Portfolio:
+    def retrieve_portfolio(self) -> Portfolio:  
         portfolio = Portfolio()
         
         cash_response = self.get(endpoint="equity/account/cash")
+        time.sleep(1) 
+        
         portfolio_response = self.get(endpoint="equity/portfolio")
+        time.sleep(1) 
 
         print(cash_response)
         print(portfolio_response)
@@ -72,30 +107,42 @@ class Trading212Client:
 
         free_cash: float = cash_response['free']
         free_cash_proportion: float = free_cash / total_value_gbp
-        portfolio.assets["free_cash"] = free_cash_proportion
+        portfolio.assets["free_cash"] = ("FREE_CASH", free_cash_proportion)
 
         blocked_cash: float = cash_response['blocked']
         blocked_cash_proportion: float = blocked_cash / total_value_gbp
-        portfolio.assets["blocked_cash"] = blocked_cash_proportion
+        portfolio.assets["blocked_cash"] = ("BLOCKED_CASH", blocked_cash_proportion)
 
         ticker_to_isin_map = self.create_ticker_to_isin_map()
+        
         usd_to_gbp = get_conversion_rate("USD", "GBP")
         eur_to_gbp = get_conversion_rate("EUR", "GBP")
+
         for asset in portfolio_response:
-            ticker: str = asset['ticker']
-            isin = ticker_to_isin_map[ticker]
+            t212_ticker: str = asset['ticker']
+            
+            isin = ticker_to_isin_map.get(t212_ticker)
+            if not isin:
+                print(f"Warning: Could not find ISIN for T212 ticker {t212_ticker}. Skipping.")
+                continue
+
+            yahoo_ticker: str = get_ticker_from_isin(isin)
+            if not yahoo_ticker:
+                print(f"Warning: Could not find Yahoo ticker for ISIN {isin}. Using T212 ticker as fallback.")
+                yahoo_ticker = t212_ticker
+
             quantity: float = asset['quantity']
             current_price: float = asset['currentPrice']
-            if "_US_EQ" in ticker:
-                current_price *= usd_to_gbp
-                #ticker = ticker.replace("_US_EQ", "")
-            elif "_EUR_EQ" in ticker:
-                current_price *= eur_to_gbp
-                #ticker = ticker.replace("_EUR_EQ", "")
 
+            if "_US_EQ" in t212_ticker:
+                current_price *= usd_to_gbp
+            elif "_EUR_EQ" in t212_ticker:
+                current_price *= eur_to_gbp
+            
             value_gbp = quantity * current_price
             proportional_value = value_gbp / total_value_gbp
-            portfolio.assets[isin] = proportional_value
+            
+            portfolio.assets[isin] = (yahoo_ticker, proportional_value)
 
         return portfolio
     
@@ -103,13 +150,13 @@ class Trading212Client:
 def export_portfolio_to_csv(portfolio: Portfolio, filename: str) -> bool:        
     filepath = os.path.join("data", filename + ".csv")
     with open(filepath, 'w', newline='') as csvfile:
-        fieldnames = ['ticker', 'proportion']
+        fieldnames = ['isin', 'ticker', 'proportion']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-        for ticker, proportion in portfolio.assets.items():
-            if ticker != "free_cash" and ticker != "blocked_cash": # don't include cash in portfolio right now
-                writer.writerow({'ticker': ticker, 'proportion': proportion})
+        for isin, val in portfolio.assets.items():
+            if isin != "free_cash" and isin != "blocked_cash": # don't include cash in portfolio right now
+                writer.writerow({'isin': isin, 'ticker': val[0], 'proportion': val[1]})
 
     return True
 

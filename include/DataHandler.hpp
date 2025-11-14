@@ -48,10 +48,11 @@ static std::pair<std::vector<std::string>, std::vector<double>> ParseAssetData(c
             continue;
 
         std::istringstream ss(line);
+        std::string isin;
         std::string ticker;
         std::string proportionStr;
 
-        if (std::getline(ss, ticker, ',') && std::getline(ss, proportionStr)) 
+        if (std::getline(ss, isin, ',') && std::getline(ss, ticker, ',') && std::getline(ss, proportionStr)) 
         {
             double proportion = std::stod(proportionStr);
             assetData.first.push_back(ticker);

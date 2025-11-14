@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 
     const Eigen::MatrixXd choleskyMatrix = PortfolioOptimisation::GetCholeskyMatrix(covMatrix);
 
-    constexpr std::size_t NUM_SIMS = 1'000'000;
+    constexpr std::size_t NUM_SIMS = 200;
     constexpr std::size_t NUM_DAYS = 252;
     auto start = std::chrono::high_resolution_clock::now();
     Returns returns = mce.GenerateReturnsForMultiAsset(choleskyMatrix, assetStatistics, NUM_SIMS, NUM_DAYS);
@@ -125,8 +125,8 @@ int main(int argc, char* argv[])
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // Returns pricePaths = mce.BuildPricePaths(returns, 100);
-    // DataHandler::WritePathsToCSV(pricePaths, "../data/multi_assets_paths.csv");
+    Returns pricePaths = mce.BuildPricePaths(returns, 100);
+    DataHandler::WritePathsToCSV(pricePaths, "../data/multi_assets_paths.csv");
 
     std::cout << "\nMonte Carlo Simulation:" << '\n';
     std::cout << "  Simulated paths: " << NUM_SIMS << "" << '\n';
