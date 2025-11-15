@@ -58,5 +58,5 @@ if __name__ == "__main__":
     if tickers and n_args > 3:
         download_assets(tickers, sys.argv[n_args-2], sys.argv[n_args-1])
     elif tickers:
-        download_assets(tickers, "2020-01-01", "2025-11-11")
+        download_assets(tickers, "2015-01-01", "2025-11-11")
 
