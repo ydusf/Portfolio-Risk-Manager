@@ -8,7 +8,7 @@
 *Monte Carlo simulation paths plotted with `scripts/paths.py`*
 
 ![Optimised Portfolios Plot](docs/optimised_portfolios.png)
-*Optimised portfolios plotted with `scripts/display_portfolios.py`*
+*Optimised portfolios plotted with `scripts/display_portfolios.py` (using FAKE data)*
 
 ![Efficient Frontier Plot](docs/efficient_frontier.png)
 *Efficient Frontier plotted with `scripts/frontier.py`*
