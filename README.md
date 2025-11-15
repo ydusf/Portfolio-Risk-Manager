@@ -7,6 +7,9 @@
 ![Monte Carlo Simulation Plot](docs/monte_carlo_simulation.png)
 *Monte Carlo simulation paths plotted with `scripts/paths.py`*
 
+![Optimised Portfolios Plot](docs/optimised_portfolios.png)
+*Optimised portfolios plotted with `scripts/display_portfolios.py`*
+
 ![Efficient Frontier Plot](docs/efficient_frontier.png)
 *Efficient Frontier plotted with `scripts/frontier.py`*
 
