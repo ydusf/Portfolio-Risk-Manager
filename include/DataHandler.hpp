@@ -160,7 +160,7 @@ static void WritePathsToCSV(const Returns& returns, const std::string& filename)
                 file << ",";
             }
         }
-        file << "\n";
+        file << '\n';
     }
 
     file.close();
@@ -373,11 +373,63 @@ static void WriteEfficientFrontierToCSV(const PortfolioOptimisation::EfficientFr
     for (size_t i = 0; i < frontier.returns.size(); ++i)
     {
         double sharpe = frontier.returns[i] / frontier.volatilities[i];
-        file << frontier.returns[i] << "," << frontier.volatilities[i] << "," << sharpe << "\n";
+        file << frontier.returns[i] << "," << frontier.volatilities[i] << "," << sharpe << '\n';
     }
     
     file.close();
     std::cout << "Efficient frontier written to: " << filename << '\n';
+}
+
+static void WritePortfoliosToCSV(
+    const std::string& filename,
+    const std::vector<std::string>& tickers,
+    double currentRet,
+    double currentVol,
+    double riskFreeRate,
+    const std::vector<double>& currentWeights,
+    const PortfolioOptimisation::OptimisationResult& minVolPortfolio,
+    const PortfolioOptimisation::OptimisationResult& maxSharpePortfolio)
+{
+    std::ofstream portfolioFile(filename);
+
+    if (!portfolioFile.is_open()) 
+    {
+        std::cerr << "Error: Could not open file to write portfolios: " << filename << '\n';
+    } 
+    else 
+    {
+        portfolioFile << "PortfolioType,ExpectedReturn,Volatility,SharpeRatio";
+        for (const auto& ticker : tickers) 
+        {
+            portfolioFile << ",Weight_" << ticker;
+        }
+        portfolioFile << '\n';
+
+        double currentSharpe = (currentVol > 0) ? (currentRet - riskFreeRate) / currentVol : 0.0;
+        portfolioFile << "Current," << currentRet << "," << currentVol << "," << currentSharpe;
+        for (const auto& w : currentWeights)
+        {
+            portfolioFile << "," << w;
+        }
+        portfolioFile << '\n';
+
+        portfolioFile << "MinVolatility," << minVolPortfolio.expectedReturn << "," << minVolPortfolio.volatility << "," << minVolPortfolio.sharpeRatio;
+        for (const auto& w : minVolPortfolio.weights) 
+        {
+            portfolioFile << "," << w;
+        }
+        portfolioFile << '\n';
+
+        portfolioFile << "MaxSharpe," << maxSharpePortfolio.expectedReturn << "," << maxSharpePortfolio.volatility << "," << maxSharpePortfolio.sharpeRatio;
+        for (const auto& w : maxSharpePortfolio.weights) 
+        {
+            portfolioFile << "," << w;
+        }
+        portfolioFile << '\n';
+
+        portfolioFile.close();
+        std::cout << "\nSuccessfully saved optimised portfolios to " << filename << '\n';
+    }
 }
 
 };

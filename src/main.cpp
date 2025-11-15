@@ -89,6 +89,16 @@ int main(int argc, char* argv[])
     std::cout << "  Volatility: " << currentVol * 100 << "%" << '\n';
     std::cout << "  Sharpe Ratio: " << (currentRet - riskFreeRate) / currentVol << '\n';
     
+    const std::string portfolioFilename = "../data/optimised_portfolios.csv";
+    DataHandler::WritePortfoliosToCSV(portfolioFilename,
+                                      tickers,
+                                      currentRet,
+                                      currentVol,
+                                      riskFreeRate,
+                                      weights,
+                                      minVolPortfolio,
+                                      maxSharpePortfolio);
+
     std::cout << "\nComputing Efficient Frontier (50 points):" << '\n';
     const PortfolioOptimisation::EfficientFrontier frontier = PortfolioOptimisation::ComputeEfficientFrontier(covMatrix, expectedReturns, 50);
     if (frontier.returns.size() > 0)
@@ -98,20 +108,6 @@ int main(int argc, char* argv[])
         std::cout << "  Min volatility portfolio is at index " << frontier.minVolIndex << '\n';
         DataHandler::WriteEfficientFrontierToCSV(frontier, "../data/efficient_frontier.csv");
     }
-
-    // MonteCarloEngine mce;
-    // const std::vector<double> combinedPortfolioReturns = mce.CombineAssetReturns(portfolio);
-    // auto [portfolioMean, portfolioStd] = mce.ComputeAssetStatistics(combinedPortfolioReturns);
-
-    // constexpr int NUM_SIMS = 200;
-    // auto start = std::chrono::high_resolution_clock::now();
-    // Returns returns = mce.GenerateReturnsForSingleAsset(portfolioMean, portfolioStd, NUM_SIMS);
-    // auto end = std::chrono::high_resolution_clock::now();
-
-    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    // Returns pricePaths = mce.BuildPricePaths(returns, 100);
-    // DataHandler::WritePathsToCSV(pricePaths, "../data/single_asset_paths.csv");
 
     MonteCarloEngine mce;
 
