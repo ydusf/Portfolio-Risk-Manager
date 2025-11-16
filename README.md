@@ -62,6 +62,7 @@ Run these commands one by one. The first command fetches your live portfolio, th
 python3 scripts/trading212.py
 ./run.sh
 python3 scripts/paths.py data/multi_assets_paths.csv
+python3 scripts/display_portfolios.py data/optimised_portfolios.csv
 python3 scripts/frontier.py
 ```
 
