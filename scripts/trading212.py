@@ -1,13 +1,14 @@
 import os
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
-from typing import Any, Dict
+from typing import Any, Dict, List
 import base64
 import requests
 from requests import Response, HTTPError, JSONDecodeError
 import csv
 from typing import Optional
 import time
+from urllib.parse import urlparse, parse_qs
 
 from currency_utils import get_conversion_rate 
 
@@ -77,6 +78,41 @@ class Trading212Client:
             print(f"Failed to decode JSON from response: {response.text}")
             raise
 
+    def get_all_orders(self) -> List[Dict]:
+        orders = []
+        cursor = None
+        has_more = True
+        
+        print("Fetching order history...")
+        
+        while has_more:
+            params = {"limit": 50} 
+            if cursor:
+                params["cursor"] = cursor
+            
+            response = self.get("equity/history/orders", params=params)
+            
+            current_batch = response.get('items', [])
+            orders.extend(current_batch)
+            
+            next_page_path = response.get('nextPagePath')
+            
+            if next_page_path:
+                parsed_url = urlparse(next_page_path)
+                query_params = parse_qs(parsed_url.query)
+                
+                if 'cursor' in query_params:
+                    cursor = query_params['cursor'][0]
+                    print(f"Fetched {len(orders)} orders so far...")
+                    time.sleep(0.5) 
+                else:
+                    has_more = False
+            else:
+                has_more = False
+                
+        print(f"Total orders fetched: {len(orders)}")
+        return orders
+
     def create_ticker_to_isin_map(self) -> Dict[str, str]:
         mapping: Dict[str, str] = {}
         print("Fetching all instrument data to build T212Ticker-to-ISIN map...")
@@ -89,7 +125,6 @@ class Trading212Client:
         
         print(f"Map built with {len(mapping)} instruments.")
         return mapping
-
 
     def retrieve_portfolio(self) -> Portfolio:  
         portfolio = Portfolio()
@@ -163,6 +198,24 @@ def export_portfolio_to_csv(portfolio: Portfolio, filename: str) -> bool:
 
     return True
 
+def export_orders_to_csv(orders: List[Dict], filename: str):
+    if not orders:
+        print("No orders to export.")
+        return
+
+    save_to = "data"
+    os.makedirs(save_to, exist_ok=True)
+    filepath = os.path.join(save_to, filename + ".csv")
+
+    headers = orders[0].keys()
+
+    with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(orders)
+    
+    print(f"Saved to {filepath}")
+
 
 if __name__ == "__main__":
     load_dotenv()
@@ -171,3 +224,6 @@ if __name__ == "__main__":
 
     portfolio: Portfolio = client.retrieve_portfolio()
     portfolio_exported: bool = export_portfolio_to_csv(portfolio, "current_portfolio")
+
+    all_orders = client.get_all_orders()
+    export_orders_to_csv(all_orders, "trade_history")
