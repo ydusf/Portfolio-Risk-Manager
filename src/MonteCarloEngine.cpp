@@ -19,80 +19,69 @@ MonteCarloEngine::~MonteCarloEngine()
 {}
 
 
-Returns MonteCarloEngine::GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths,  std::size_t numDays) const
+Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
+    const Eigen::MatrixXd& choleskyMatrix, 
+    const std::vector<std::pair<double, double>>& assetStatistics, 
+    std::size_t numPaths, 
+    std::size_t numDays) const
 {    
     const std::size_t numAssets = assetStatistics.size();
-    assert(choleskyMatrix.rows() == numAssets && choleskyMatrix.cols() == numAssets);
     
     Returns returns;
     returns.m_returns.resize(numPaths * numDays);
     returns.m_blockSize = numDays;
 
-    Eigen::VectorXd dailyDrifts(numAssets);
-    Eigen::VectorXd dailyVolatilities(numAssets);
-
     const double dt = 1.0 / static_cast<double>(numDays);
-    for(std::size_t i = 0; i < numAssets; ++i)
-    {
-        dailyDrifts(i) = assetStatistics[i].first * dt;
-        dailyVolatilities(i) = assetStatistics[i].second * std::sqrt(dt);
+    const double sqrtDt = std::sqrt(dt);
+
+    double totalDrift = 0.0;
+    Eigen::VectorXd volatilities(numAssets);
+
+    for(std::size_t i = 0; i < numAssets; ++i) {
+        totalDrift += assetStatistics[i].first * dt;
+        volatilities(i) = assetStatistics[i].second * sqrtDt;
     }
-    
-    const double driftSum = dailyDrifts.sum();
+
+    // pre-calculate (Vol^T * L)
+    // inner loop simply needs to perform (effectiveWeights * Z)
+    Eigen::VectorXd effectiveWeights = volatilities.transpose() * choleskyMatrix;
 
     std::vector<std::thread> threads;
     threads.reserve(NUM_THREADS);
-
     const std::size_t pathsPerThread = numPaths / NUM_THREADS;
-    constexpr std::size_t BATCH_SIZE = 100;
 
     for(std::size_t threadIdx = 0; threadIdx < NUM_THREADS; ++threadIdx)
     {
         const std::size_t startPath = threadIdx * pathsPerThread;
         const std::size_t endPath = (threadIdx == NUM_THREADS - 1) ? numPaths : (threadIdx + 1) * pathsPerThread;
 
-        threads.emplace_back([&, startPath, endPath]() {
-            thread_local static GenNormalPCG rng;
-            
-            Eigen::MatrixXd independentShocks(numAssets, numDays * BATCH_SIZE);
-            Eigen::MatrixXd correlatedShocks(numAssets, numDays * BATCH_SIZE);
-            
-            for(std::size_t batchStart = startPath; batchStart < endPath; batchStart += BATCH_SIZE)
+        threads.emplace_back([&, startPath, endPath, totalDrift, effectiveWeights]() {
+            thread_local GenNormalPCG rng; 
+        
+            Eigen::VectorXd independentShocks(numAssets);
+
+            for(std::size_t path = startPath; path < endPath; ++path)
             {
-                const std::size_t batchEnd = std::min(batchStart + BATCH_SIZE, endPath);
-                const std::size_t currentBatchSize = batchEnd - batchStart;
-                const std::size_t totalSteps = numDays * currentBatchSize;
-                
-                double* shockData = independentShocks.data();
-                for(std::size_t i = 0; i < numAssets * totalSteps; ++i)
+                std::size_t baseIdx = path * numDays;
+                for(std::size_t day = 0; day < numDays; ++day)
                 {
-                    shockData[i] = rng();
-                }
-                
-                correlatedShocks.leftCols(totalSteps) = choleskyMatrix * independentShocks.leftCols(totalSteps);
-                
-                for(std::size_t pathIdx = 0; pathIdx < currentBatchSize; ++pathIdx)
-                {
-                    const std::size_t path = batchStart + pathIdx;
-                    const std::size_t baseIdx = path * numDays;
-                    const std::size_t columnOffset = pathIdx * numDays;
-                    
-                    for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
+                    for(std::size_t i = 0; i < numAssets; ++i) 
                     {
-                        const std::size_t colIdx = columnOffset + dayIdx;
-                        double totalDailyReturns = driftSum + dailyVolatilities.dot(correlatedShocks.col(colIdx));
-                        returns.m_returns[baseIdx + dayIdx] = totalDailyReturns;
+                        independentShocks(i) = rng();
                     }
+
+                    double stochasticComponent = effectiveWeights.dot(independentShocks);             
+                    returns.m_returns[baseIdx + day] = totalDrift + stochasticComponent;
                 }
             }
         });
     }
 
-    for(std::thread& th : threads)
+    for(std::thread& th : threads) 
     {
         th.join();
     }
-
+    
     return returns;
 }
 
