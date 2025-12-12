@@ -22,10 +22,10 @@ public:
     MonteCarloEngine();
     ~MonteCarloEngine();
     
-    std::pair<double, double> ComputeAssetStatistics(const std::size_t assetIdx, const std::vector<std::vector<double>>& assetReturns);
-    std::vector<std::pair<double, double>> ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns);
+    std::pair<double, double> ComputeAssetStatistics(const std::size_t assetIdx, const std::vector<std::vector<double>>& assetReturns, bool annualise);
+    std::vector<std::pair<double, double>> ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns, bool annualise);
     std::vector<double> CombineAssetReturns(const Portfolio& portfolio);
-    Returns GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, std::size_t numPaths = 1000000, std::size_t numDays = 252) const;
+    Returns GenerateReturnsForMultiAsset(const Eigen::MatrixXd& choleskyMatrix, const std::vector<std::pair<double, double>>& assetStatistics, const std::vector<double>& weights, bool ignoreDrift, std::size_t numPaths = 1000000, std::size_t numDays = 252) const;
     Returns GenerateReturnsForSingleAsset(double drift, double volatility, std::size_t numPaths = 1000000, std::size_t numDays = 252) const;
     Returns BuildPricePaths(const Returns& returns, double initialPrice);
 };

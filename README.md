@@ -4,8 +4,11 @@
 
 ## Analysis Visualizations
 
-![Monte Carlo Simulation Plot](docs/monte_carlo_simulation.png)
-*Monte Carlo simulation paths plotted with `scripts/paths.py`*
+![Monte Carlo Simulation Plot](docs/monte_carlo_simulation_using_risk_free_rate.png)
+*Monte Carlo simulation (using risk free rate) paths plotted with `scripts/paths.py`*
+
+![Monte Carlo Simulation Plot](docs/monte_carlo_simulation_using_past_returns.png)
+*Monte Carlo simulation (using past returns) paths plotted with `scripts/paths.py`*
 
 ![Optimised Portfolios Plot](docs/optimised_portfolios.png)
 *Optimised portfolios plotted with `scripts/display_portfolios.py` (using FAKE data)*

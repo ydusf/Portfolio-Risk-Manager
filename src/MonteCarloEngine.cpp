@@ -21,7 +21,9 @@ MonteCarloEngine::~MonteCarloEngine()
 
 Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
     const Eigen::MatrixXd& choleskyMatrix, 
-    const std::vector<std::pair<double, double>>& assetStatistics, 
+    const std::vector<std::pair<double, double>>& assetStatistics,
+    const std::vector<double>& weights,
+    bool ignoreDrift, 
     std::size_t numPaths, 
     std::size_t numDays) const
 {    
@@ -35,11 +37,24 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
     const double sqrtDt = std::sqrt(dt);
 
     double totalDrift = 0.0;
-    Eigen::VectorXd volatilities(numAssets);
+    if(!ignoreDrift)
+    {
+        for(std::size_t i = 0; i < numAssets; ++i) 
+        {
+            totalDrift += weights[i] * assetStatistics[i].first * dt;
+        }
+    }
+    else
+    {
+        // use an arbitrary risk free rate (should probably put this as an argument)
+        double riskFreeRate = 0.04;
+        totalDrift = riskFreeRate * dt;
+    }
 
-    for(std::size_t i = 0; i < numAssets; ++i) {
-        totalDrift += assetStatistics[i].first * dt;
-        volatilities(i) = assetStatistics[i].second * sqrtDt;
+    Eigen::VectorXd volatilities(numAssets);
+    for(std::size_t i = 0; i < numAssets; ++i) 
+    {
+        volatilities(i) = weights[i] * assetStatistics[i].second * sqrtDt;
     }
 
     // pre-calculate (Vol^T * L)
@@ -152,7 +167,7 @@ Returns MonteCarloEngine::BuildPricePaths(const Returns& returns, double initial
     return prices;
 }
 
-std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::size_t assetIdx, const std::vector<std::vector<double>>& assetReturns)
+std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::size_t assetIdx, const std::vector<std::vector<double>>& assetReturns, bool annualise)
 {
     assert(!assetReturns.empty());
 
@@ -163,7 +178,7 @@ std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::si
     {
         sum += tReturns[assetIdx];
     }
-    const double mean = sum / n;
+    double mean = sum / n;
 
     double sumSquaredDiffs = 0.0;
     for (const std::vector<double>& tReturns : assetReturns)
@@ -172,12 +187,18 @@ std::pair<double, double> MonteCarloEngine::ComputeAssetStatistics(const std::si
     }
 
     const double variance = sumSquaredDiffs / (n - 1.0);
-    const double stddev = std::sqrt(variance);
+    double stddev = std::sqrt(variance);
+
+    if (annualise)
+    {
+        mean = mean * 252.0;
+        stddev = stddev * std::sqrt(252.0);
+    }
 
     return { mean, stddev };
 }
 
-std::vector<std::pair<double, double>> MonteCarloEngine::ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns)
+std::vector<std::pair<double, double>> MonteCarloEngine::ComputeMultiAssetStatistics(const std::vector<std::vector<double>>& returns, bool annualise)
 {
     const std::size_t numDays = returns.size();
     assert(numDays > 0);
@@ -189,7 +210,7 @@ std::vector<std::pair<double, double>> MonteCarloEngine::ComputeMultiAssetStatis
 
     for(std::size_t asset = 0; asset < numAssets; ++asset)
     {
-        std::pair<double, double> assetStats = ComputeAssetStatistics(asset, returns);
+        std::pair<double, double> assetStats = ComputeAssetStatistics(asset, returns, annualise);
         statistics.emplace_back(assetStats);
     }
 
