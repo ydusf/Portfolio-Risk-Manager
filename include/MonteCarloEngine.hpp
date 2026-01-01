@@ -8,8 +8,6 @@
 #include "Portfolio.hpp"
 #include "RandomGenerator.hpp"
 
-static const std::size_t NUM_THREADS = std::thread::hardware_concurrency();
-
 struct Returns
 {
     std::vector<double> m_returns;

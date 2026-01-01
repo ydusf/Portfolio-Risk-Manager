@@ -51,42 +51,46 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
         totalDrift = riskFreeRate * dt;
     }
 
-    Eigen::VectorXd volatilities(numAssets);
+    // represents the raw risk of each position in isolation
+    Eigen::VectorXd positionRisks(numAssets);
     for(std::size_t i = 0; i < numAssets; ++i) 
     {
-        volatilities(i) = weights[i] * assetStatistics[i].second * sqrtDt;
+        positionRisks(i) = weights[i] * (assetStatistics[i].second * sqrtDt);
     }
 
     // pre-calculate (Vol^T * L)
-    // inner loop simply needs to perform (effectiveWeights * Z)
-    Eigen::VectorXd effectiveWeights = volatilities.transpose() * choleskyMatrix;
+    // project the position risks onto the independent Cholesky factors
+    Eigen::VectorXd exposureToIndependentFactors = positionRisks.transpose() * choleskyMatrix;
 
+    // since factors are independent, total variance is the sum of squared exposures
+    const double portfolioStepStdDev = exposureToIndependentFactors.norm();
+
+    const std::size_t NUM_THREADS = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(NUM_THREADS);
+
     const std::size_t pathsPerThread = numPaths / NUM_THREADS;
+    const std::size_t remainderPaths = numPaths % NUM_THREADS;
+    std::size_t currentStartPath = 0;
 
     for(std::size_t threadIdx = 0; threadIdx < NUM_THREADS; ++threadIdx)
     {
-        const std::size_t startPath = threadIdx * pathsPerThread;
-        const std::size_t endPath = (threadIdx == NUM_THREADS - 1) ? numPaths : (threadIdx + 1) * pathsPerThread;
+        const std::size_t count = pathsPerThread + (threadIdx < remainderPaths ? 1 : 0);
+        const std::size_t startPath = currentStartPath;
+        const std::size_t endPath = startPath + count;
+        currentStartPath = endPath;
 
-        threads.emplace_back([&, startPath, endPath, totalDrift, effectiveWeights]() {
+        threads.emplace_back([&, startPath, endPath, totalDrift]() {
             thread_local GenNormalPCG rng; 
-        
-            Eigen::VectorXd independentShocks(numAssets);
 
+            double* returnsPtr = returns.m_returns.data();
             for(std::size_t path = startPath; path < endPath; ++path)
             {
                 std::size_t baseIdx = path * numDays;
-                for(std::size_t day = 0; day < numDays; ++day)
+                for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
                 {
-                    for(std::size_t i = 0; i < numAssets; ++i) 
-                    {
-                        independentShocks(i) = rng();
-                    }
-
-                    double stochasticComponent = effectiveWeights.dot(independentShocks);             
-                    returns.m_returns[baseIdx + day] = totalDrift + stochasticComponent;
+                    const double shock = rng(); 
+                    returnsPtr[baseIdx + dayIdx] = totalDrift + (portfolioStepStdDev * shock);
                 }
             }
         });
@@ -110,25 +114,32 @@ Returns MonteCarloEngine::GenerateReturnsForSingleAsset(double drift, double vol
     const double dailyVolatility = volatility * std::sqrt(dt);
     const double dailyDrift = drift * dt;
 
+    const std::size_t NUM_THREADS = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(NUM_THREADS);
 
     const std::size_t pathsPerThread = numPaths / NUM_THREADS;
+    const std::size_t remainderPaths = numPaths % NUM_THREADS;
+    std::size_t currentStartPath = 0;
 
     for(std::size_t threadIdx = 0; threadIdx < NUM_THREADS; ++threadIdx)
     {
-        const std::size_t startPath = threadIdx * pathsPerThread;
-        const std::size_t endPath = (threadIdx == NUM_THREADS - 1) ? numPaths : (threadIdx+ 1) * pathsPerThread;
+        const std::size_t count = pathsPerThread + (threadIdx < remainderPaths ? 1 : 0);
+        const std::size_t startPath = currentStartPath;
+        const std::size_t endPath = startPath + count;
+        currentStartPath = endPath;
 
         threads.emplace_back([&, threadIdx, startPath, endPath, dailyDrift, dailyVolatility]() {
             thread_local static GenNormalPCG rng;
+
+            double* returnsPtr = returns.m_returns.data();
             for(std::size_t path = startPath; path < endPath; ++path)
             {                
                 std::size_t baseIdx = path * numDays;
                 for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
                 {
-                    const std::size_t flatIdx = baseIdx + dayIdx;
-                    returns.m_returns[flatIdx] = dailyDrift + dailyVolatility * rng();
+                    const double shock = rng();
+                    returnsPtr[baseIdx + dayIdx] = dailyDrift + (dailyVolatility * shock);
                 }
             }
         });
