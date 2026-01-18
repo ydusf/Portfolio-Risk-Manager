@@ -83,13 +83,14 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
         threads.emplace_back([&, startPath, endPath, totalDrift]() {
             thread_local GenNormalPCG rng; 
 
+            // bypasses vector bounds checking (probably done by compiler already)
             double* returnsPtr = returns.m_returns.data();
             for(std::size_t path = startPath; path < endPath; ++path)
             {
                 std::size_t baseIdx = path * numDays;
                 for(std::size_t dayIdx = 0; dayIdx < numDays; ++dayIdx)
                 {
-                    const double shock = rng(); 
+                    const double shock = rng();
                     returnsPtr[baseIdx + dayIdx] = totalDrift + (portfolioStepStdDev * shock);
                 }
             }
@@ -98,7 +99,10 @@ Returns MonteCarloEngine::GenerateReturnsForMultiAsset(
 
     for(std::thread& th : threads) 
     {
-        th.join();
+        if(th.joinable())
+        {
+            th.join();
+        }
     }
     
     return returns;

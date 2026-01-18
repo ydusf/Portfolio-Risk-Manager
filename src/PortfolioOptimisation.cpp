@@ -256,11 +256,11 @@ namespace PortfolioOptimisation
         
         /*
         covMatrix is in the form:
-            [ [Cov(A1,A1), Cov(A2,A1), Cov(A3,A1), ..., Cov(An, A1)],
-              [​Cov(A1,A2), Cov(A2,A2), Cov(A3,A2), ..., Cov(An, A2)],
-              [​Cov(A1,A3), Cov(A2,A3), Cov(A3,A3), ..., Cov(An, A3)],
+            [ [Var(A1), Cov(A2,A1), Cov(A3,A1), ..., Cov(An, A1)],
+              [​Cov(A1,A2), Var(A2), Cov(A3,A2), ..., Cov(An, A2)],
+              [​Cov(A1,A3), Cov(A2,A3), Var(A3), ..., Cov(An, A3)],
               ......................................................
-              [​Cov(A1,An), Cov(A2,An), Cov(A3,An), ..., Cov(An, An)]​ ]
+              [​Cov(A1,An), Cov(A2,An), Cov(A3,An), ..., Var(An)]​ ]
         where A1, A2, A3, ..., An are individual assets in a portfolio
         */
         std::vector<std::vector<double>> covMatrix(numAssets, std::vector<double>(numAssets, 0.0));
